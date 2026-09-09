@@ -11,8 +11,8 @@ from pathlib import Path
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 
-APP_NAME = "Kids Church Video Downloader"
-APP_VERSION = "0.3.0"
+APP_NAME = "YouTube Downloader"
+APP_VERSION = "0.4.0"
 
 RESOLUTION_FORMATS = {
     "1080p": "bestvideo[height<=1080]+bestaudio/best[height<=1080]",
@@ -20,7 +20,11 @@ RESOLUTION_FORMATS = {
     "480p": "bestvideo[height<=480]+bestaudio/best[height<=480]",
 }
 
-MEDIA_EXTENSIONS = {".mkv", ".mp4", ".webm", ".mov", ".m4v"}
+OUTPUT_FORMATS = ("MP4 Video", "WAV Audio")
+MEDIA_EXTENSIONS = {
+    ".mkv", ".mp4", ".webm", ".mov", ".m4v",
+    ".m4a", ".aac", ".opus", ".ogg", ".mp3", ".wav"
+}
 FINISHED_STATES = {"Complete", "Failed", "Cancelled"}
 
 
@@ -37,6 +41,7 @@ def settings_file() -> Path:
         base = Path.home() / "Library" / "Application Support"
     else:
         base = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+    # Keep the existing settings folder so V0.3 preferences survive the rename.
     folder = base / "KidsChurchVideoDownloader"
     folder.mkdir(parents=True, exist_ok=True)
     return folder / "settings.json"
@@ -45,7 +50,7 @@ def settings_file() -> Path:
 def safe_filename(name: str) -> str:
     name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", name)
     name = re.sub(r"\s+", " ", name).strip().strip(".")
-    return name or "video"
+    return name or "media"
 
 
 def find_tool(name: str):
@@ -89,8 +94,8 @@ class DownloaderApp:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title(f"{APP_NAME} v{APP_VERSION}")
-        self.root.geometry("920x780")
-        self.root.minsize(820, 700)
+        self.root.geometry("960x800")
+        self.root.minsize(840, 720)
 
         self.events = queue.Queue()
         self.preview_worker = None
@@ -112,6 +117,12 @@ class DownloaderApp:
         self.res_var = tk.StringVar(value=settings.get("resolution", "1080p"))
         if self.res_var.get() not in RESOLUTION_FORMATS:
             self.res_var.set("1080p")
+
+        saved_output_format = settings.get("output_format", "MP4 Video")
+        if saved_output_format not in OUTPUT_FORMATS:
+            saved_output_format = "MP4 Video"
+        self.output_format_var = tk.StringVar(value=saved_output_format)
+
         default_folder = settings.get("save_folder") or str(Path.home() / "Videos")
         self.folder_var = tk.StringVar(value=default_folder)
 
@@ -123,6 +134,7 @@ class DownloaderApp:
 
         self._build_ui()
         self._refresh_tool_status()
+        self._apply_output_format_state()
         self._refresh_controls()
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
         self.root.after(100, self._process_events)
@@ -137,6 +149,7 @@ class DownloaderApp:
         data = {
             "save_folder": self.folder_var.get().strip(),
             "resolution": self.res_var.get(),
+            "output_format": self.output_format_var.get(),
         }
         try:
             settings_file().write_text(json.dumps(data, indent=2), encoding="utf-8")
@@ -156,15 +169,15 @@ class DownloaderApp:
         ttk.Label(
             outer,
             text=(
-                "Paste links and add them to the queue. Downloads run automatically one-by-one "
-                "and are converted to PowerPoint-friendly MP4 files."
+                "Paste YouTube links and add them to the queue. Download as a "
+                "PowerPoint-friendly MP4 video or uncompressed WAV audio."
             ),
-            wraplength=870,
+            wraplength=900,
         ).pack(anchor="w", pady=(4, 16))
 
         url_frame = ttk.Frame(outer)
         url_frame.pack(fill="x")
-        ttk.Label(url_frame, text="Video URL").grid(row=0, column=0, columnspan=3, sticky="w")
+        ttk.Label(url_frame, text="YouTube URL").grid(row=0, column=0, columnspan=3, sticky="w")
         self.url_entry = ttk.Entry(url_frame, textvariable=self.url_var)
         self.url_entry.grid(row=1, column=0, sticky="ew", pady=(4, 10))
         self.preview_btn = ttk.Button(url_frame, text="Preview", command=self._start_preview)
@@ -175,25 +188,36 @@ class DownloaderApp:
         self.url_entry.focus_set()
         self.url_entry.bind("<Return>", lambda _event: self._queue_current_url())
 
-        preview = ttk.LabelFrame(outer, text="Video preview")
+        preview = ttk.LabelFrame(outer, text="Media preview")
         preview.pack(fill="x", pady=(0, 12))
         ttk.Label(
             preview,
             textvariable=self.preview_title_var,
             font=("Segoe UI", 11, "bold"),
-            wraplength=840,
+            wraplength=880,
         ).pack(anchor="w", padx=10, pady=(7, 2))
         ttk.Label(
             preview,
             textvariable=self.preview_detail_var,
-            wraplength=840,
+            wraplength=880,
         ).pack(anchor="w", padx=10, pady=(0, 7))
 
         options = ttk.Frame(outer)
         options.pack(fill="x")
 
-        ttk.Label(options, text="Maximum resolution").grid(row=0, column=0, sticky="w")
-        ttk.Label(options, text="Save folder").grid(row=0, column=1, sticky="w", padx=(18, 0))
+        ttk.Label(options, text="Output format").grid(row=0, column=0, sticky="w")
+        ttk.Label(options, text="Maximum resolution").grid(row=0, column=1, sticky="w", padx=(18, 0))
+        ttk.Label(options, text="Save folder").grid(row=0, column=2, sticky="w", padx=(18, 0))
+
+        self.output_format_combo = ttk.Combobox(
+            options,
+            textvariable=self.output_format_var,
+            values=OUTPUT_FORMATS,
+            state="readonly",
+            width=15,
+        )
+        self.output_format_combo.grid(row=1, column=0, sticky="w", pady=(4, 10))
+        self.output_format_combo.bind("<<ComboboxSelected>>", self._on_output_format_changed)
 
         self.res_combo = ttk.Combobox(
             options,
@@ -202,13 +226,13 @@ class DownloaderApp:
             state="readonly",
             width=12,
         )
-        self.res_combo.grid(row=1, column=0, sticky="w", pady=(4, 10))
+        self.res_combo.grid(row=1, column=1, sticky="w", padx=(18, 0), pady=(4, 10))
 
         folder_row = ttk.Frame(options)
-        folder_row.grid(row=1, column=1, sticky="ew", padx=(18, 0), pady=(4, 10))
+        folder_row.grid(row=1, column=2, sticky="ew", padx=(18, 0), pady=(4, 10))
         ttk.Entry(folder_row, textvariable=self.folder_var).pack(side="left", fill="x", expand=True)
         ttk.Button(folder_row, text="Browse…", command=self._browse).pack(side="left", padx=(8, 0))
-        options.columnconfigure(1, weight=1)
+        options.columnconfigure(2, weight=1)
 
         queue_frame = ttk.LabelFrame(outer, text="Download queue")
         queue_frame.pack(fill="both", expand=True, pady=(2, 12))
@@ -218,17 +242,19 @@ class DownloaderApp:
 
         self.queue_tree = ttk.Treeview(
             queue_table,
-            columns=("title", "resolution", "status"),
+            columns=("title", "format", "quality", "status"),
             show="headings",
             height=7,
             selectmode="extended",
         )
-        self.queue_tree.heading("title", text="Video")
-        self.queue_tree.heading("resolution", text="Quality")
+        self.queue_tree.heading("title", text="Media")
+        self.queue_tree.heading("format", text="Format")
+        self.queue_tree.heading("quality", text="Quality")
         self.queue_tree.heading("status", text="Status")
-        self.queue_tree.column("title", width=560, minwidth=260, stretch=True)
-        self.queue_tree.column("resolution", width=90, minwidth=75, stretch=False, anchor="center")
-        self.queue_tree.column("status", width=130, minwidth=105, stretch=False, anchor="center")
+        self.queue_tree.column("title", width=500, minwidth=260, stretch=True)
+        self.queue_tree.column("format", width=105, minwidth=90, stretch=False, anchor="center")
+        self.queue_tree.column("quality", width=85, minwidth=70, stretch=False, anchor="center")
+        self.queue_tree.column("status", width=125, minwidth=105, stretch=False, anchor="center")
 
         scrollbar = ttk.Scrollbar(queue_table, orient="vertical", command=self.queue_tree.yview)
         self.queue_tree.configure(yscrollcommand=scrollbar.set)
@@ -258,10 +284,10 @@ class DownloaderApp:
         legal = ttk.Label(
             outer,
             text=(
-                "Use only for videos you own or are authorised to download. "
+                "Use only for videos/audio you own or are authorised to download. "
                 "The app does not attempt to bypass DRM or protected streaming restrictions."
             ),
-            wraplength=870,
+            wraplength=900,
         )
         legal.pack(anchor="w", pady=(8, 0))
 
@@ -299,6 +325,16 @@ class DownloaderApp:
 
     def _queue_busy(self):
         return bool(self.queue_worker and self.queue_worker.is_alive())
+
+    def _on_output_format_changed(self, _event=None):
+        self._apply_output_format_state()
+        self._save_settings()
+
+    def _apply_output_format_state(self):
+        if self.output_format_var.get() == "WAV Audio":
+            self.res_combo.configure(state="disabled")
+        else:
+            self.res_combo.configure(state="readonly")
 
     def _refresh_controls(self):
         preview_busy = self._preview_busy()
@@ -341,7 +377,7 @@ class DownloaderApp:
 
         url = self.url_var.get().strip()
         if not url:
-            messagebox.showwarning("Video URL", "Paste a video URL first.")
+            messagebox.showwarning("YouTube URL", "Paste a YouTube URL first.")
             return
 
         tools = self._required_tools()
@@ -399,7 +435,7 @@ class DownloaderApp:
 
         url = self.url_var.get().strip()
         if not url:
-            messagebox.showwarning("Video URL", "Paste a video URL first.")
+            messagebox.showwarning("YouTube URL", "Paste a YouTube URL first.")
             return
 
         tools = self._required_tools()
@@ -421,11 +457,15 @@ class DownloaderApp:
             else short_url(url)
         )
 
+        output_format = self.output_format_var.get()
+        quality = self.res_var.get() if output_format == "MP4 Video" else "Audio"
+
         self.job_counter += 1
         job = {
             "id": self.job_counter,
             "url": url,
             "resolution": self.res_var.get(),
+            "output_format": output_format,
             "output_dir": output_dir,
             "title": display_title,
             "status": "Queued",
@@ -439,10 +479,10 @@ class DownloaderApp:
             "",
             "end",
             iid=str(job["id"]),
-            values=(job["title"], job["resolution"], job["status"]),
+            values=(job["title"], output_format.replace(" Video", "").replace(" Audio", ""), quality, job["status"]),
         )
 
-        self._append_log(f"Queued: {display_title}")
+        self._append_log(f"Queued {output_format}: {display_title}")
         self.url_var.set("")
         self.preview_info = None
         self.preview_url = None
@@ -499,7 +539,7 @@ class DownloaderApp:
             self.current_job_id = job["id"]
             self.operation_cancel_requested = False
             self.events.put(("job_status", job["id"], "Running"))
-            self.events.put(("log", f"Starting: {job['url']}"))
+            self.events.put(("log", f"Starting {job['output_format']}: {job['url']}"))
 
             try:
                 output = self._download_job(job, tools)
@@ -518,9 +558,10 @@ class DownloaderApp:
         self.events.put(("queue_idle",))
 
     def _download_job(self, job, tools):
-        temp_dir = Path(tempfile.mkdtemp(prefix="kc_video_"))
+        temp_dir = Path(tempfile.mkdtemp(prefix="youtube_downloader_"))
         title = None
         info = job.get("info")
+        is_wav = job["output_format"] == "WAV Audio"
 
         try:
             if info is None:
@@ -533,10 +574,17 @@ class DownloaderApp:
                     self.events.put(("log", f"Preview information unavailable: {exc}"))
 
             if info:
-                title = safe_filename(info.get("title") or "video")
+                title = safe_filename(info.get("title") or "media")
                 self.events.put(("job_title", job["id"], info.get("title") or title))
 
-            self.events.put(("job_progress", job["id"], 0, "Downloading video and audio…"))
+            if is_wav:
+                self.events.put(("job_progress", job["id"], 0, "Downloading best available audio…"))
+                format_expression = "bestaudio/best"
+            else:
+                self.events.put(("job_progress", job["id"], 0, "Downloading video and audio…"))
+                format_expression = RESOLUTION_FORMATS.get(
+                    job["resolution"], RESOLUTION_FORMATS["1080p"]
+                )
 
             progress_template = (
                 "download:KC_PROGRESS|%(progress._percent_str)s|"
@@ -553,17 +601,19 @@ class DownloaderApp:
                 "--ffmpeg-location",
                 str(Path(tools["ffmpeg"]).parent),
                 "--format",
-                RESOLUTION_FORMATS.get(job["resolution"], RESOLUTION_FORMATS["1080p"]),
-                "--merge-output-format",
-                "mkv",
+                format_expression,
                 "--output",
                 str(temp_dir / "%(title).180B [%(id)s].%(ext)s"),
                 "--print",
                 "before_dl:KC_TITLE|%(title)s",
                 "--print",
                 "after_move:KC_FILE|%(filepath)s",
-                job["url"],
             ]
+
+            if not is_wav:
+                cmd.extend(["--merge-output-format", "mkv"])
+
+            cmd.append(job["url"])
 
             proc = self._start_process(cmd, capture_stderr=False)
             downloaded_path = None
@@ -588,7 +638,8 @@ class DownloaderApp:
                     speed = parts[2].strip() if len(parts) > 2 else ""
                     eta = parts[3].strip() if len(parts) > 3 else ""
                     overall = min(75.0, max(0.0, pct * 0.75))
-                    message = f"Downloading… {pct:.1f}%"
+                    label = "Downloading audio" if is_wav else "Downloading"
+                    message = f"{label}… {pct:.1f}%"
                     if speed and speed != "N/A":
                         message += f"  •  {speed}"
                     if eta and eta != "N/A":
@@ -623,42 +674,57 @@ class DownloaderApp:
                 ]
                 if not candidates:
                     raise RuntimeError(
-                        "The download finished, but the video file could not be located."
+                        "The download finished, but the media file could not be located."
                     )
                 downloaded_path = max(candidates, key=lambda p: p.stat().st_size)
 
             if not title:
                 title = safe_filename(downloaded_path.stem)
 
-            output = job["output_dir"] / f"{title}.mp4"
+            extension = ".wav" if is_wav else ".mp4"
+            output = job["output_dir"] / f"{title}{extension}"
             index = 2
             while output.exists():
-                output = job["output_dir"] / f"{title} ({index}).mp4"
+                output = job["output_dir"] / f"{title} ({index}){extension}"
                 index += 1
 
             duration = info.get("duration") if info else None
-            self.events.put(
-                (
-                    "job_progress",
-                    job["id"],
-                    75,
-                    "Converting to PowerPoint-friendly H.264/AAC MP4…",
+
+            if is_wav:
+                self.events.put(
+                    ("job_progress", job["id"], 75, "Converting to uncompressed WAV audio…")
                 )
-            )
-            self.events.put(("log", f"Converting: {downloaded_path.name}"))
-            self._convert_with_ffmpeg(
-                downloaded_path,
-                output,
-                tools["ffmpeg"],
-                duration,
-                job["id"],
-            )
+                self.events.put(("log", f"Converting WAV: {downloaded_path.name}"))
+                self._convert_to_wav(
+                    downloaded_path,
+                    output,
+                    tools["ffmpeg"],
+                    duration,
+                    job["id"],
+                )
+            else:
+                self.events.put(
+                    (
+                        "job_progress",
+                        job["id"],
+                        75,
+                        "Converting to PowerPoint-friendly H.264/AAC MP4…",
+                    )
+                )
+                self.events.put(("log", f"Converting MP4: {downloaded_path.name}"))
+                self._convert_to_mp4(
+                    downloaded_path,
+                    output,
+                    tools["ffmpeg"],
+                    duration,
+                    job["id"],
+                )
 
             return str(output)
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
 
-    def _convert_with_ffmpeg(self, source, output, ffmpeg, duration, job_id):
+    def _convert_to_mp4(self, source, output, ffmpeg, duration, job_id):
         cmd = [
             ffmpeg,
             "-hide_banner",
@@ -690,7 +756,32 @@ class DownloaderApp:
             "-nostats",
             str(output),
         ]
+        self._run_ffmpeg_conversion(cmd, duration, job_id, "Converting MP4")
 
+    def _convert_to_wav(self, source, output, ffmpeg, duration, job_id):
+        cmd = [
+            ffmpeg,
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-i",
+            str(source),
+            "-vn",
+            "-c:a",
+            "pcm_s16le",
+            "-ar",
+            "48000",
+            "-ac",
+            "2",
+            "-progress",
+            "pipe:1",
+            "-nostats",
+            str(output),
+        ]
+        self._run_ffmpeg_conversion(cmd, duration, job_id, "Converting WAV")
+
+    def _run_ffmpeg_conversion(self, cmd, duration, job_id, label):
         proc = self._start_process(cmd, capture_stderr=True)
 
         while True:
@@ -711,7 +802,7 @@ class DownloaderApp:
                     pct = min(100.0, seconds / float(duration) * 100)
                     overall = 75.0 + pct * 0.25
                     self.events.put(
-                        ("job_progress", job_id, overall, f"Converting MP4… {pct:.1f}%")
+                        ("job_progress", job_id, overall, f"{label}… {pct:.1f}%")
                     )
                 except (ValueError, ZeroDivisionError):
                     pass
@@ -839,13 +930,13 @@ class DownloaderApp:
             return
 
         values = list(self.queue_tree.item(iid, "values"))
-        while len(values) < 3:
+        while len(values) < 4:
             values.append("")
 
         if title is not None:
             values[0] = title
         if status is not None:
-            values[2] = status
+            values[3] = status
 
         self.queue_tree.item(iid, values=values)
 
