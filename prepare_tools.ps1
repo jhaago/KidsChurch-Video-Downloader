@@ -28,9 +28,21 @@ Expand-Archive -Path $denoZip -DestinationPath $denoExtract -Force
 Copy-Item (Join-Path $denoExtract "deno.exe") (Join-Path $Tools "deno.exe") -Force
 
 Write-Host "Downloading latest FFmpeg Windows x64 GPL build..."
+$ffmpegRelease = Invoke-RestMethod -Headers @{ "User-Agent" = "YouTube-Downloader-build" } -Uri "https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/latest"
+$ffmpegAsset = $ffmpegRelease.assets | Where-Object {
+    $_.name -match "^ffmpeg-.*-win64-gpl\.zip$" -and
+    $_.name -notmatch "-shared" -and
+    $_.name -notmatch "-gpl-[0-9]"
+} | Select-Object -First 1
+
+if (-not $ffmpegAsset) {
+    throw "Could not locate the latest Windows x64 GPL FFmpeg release asset."
+}
+
+Write-Host ("Using FFmpeg asset: " + $ffmpegAsset.name)
 $ffmpegZip = Join-Path $Temp "ffmpeg.zip"
 $ffmpegExtract = Join-Path $Temp "ffmpeg"
-Invoke-WebRequest -Uri "https://github.com/BtbN/FFmpeg-Builds/releases/latest/download/ffmpeg-master-latest-win64-gpl.zip" -OutFile $ffmpegZip
+Invoke-WebRequest -Uri $ffmpegAsset.browser_download_url -OutFile $ffmpegZip
 Expand-Archive -Path $ffmpegZip -DestinationPath $ffmpegExtract -Force
 
 $ffmpegExe = Get-ChildItem -Path $ffmpegExtract -Filter "ffmpeg.exe" -Recurse | Select-Object -First 1
