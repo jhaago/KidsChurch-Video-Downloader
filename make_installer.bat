@@ -2,7 +2,7 @@
 setlocal
 cd /d "%~dp0"
 
-if not exist "dist\KidsChurchVideoDownloader\KidsChurchVideoDownloader.exe" (
+if not exist "dist\YouTubeDownloader\YouTubeDownloader.exe" (
     echo The application has not been built yet.
     echo Run build_windows.bat first.
     pause
