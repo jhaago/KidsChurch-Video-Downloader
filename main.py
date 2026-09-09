@@ -12,7 +12,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 
 APP_NAME = "YouTube Downloader"
-APP_VERSION = "0.5.0"
+APP_VERSION = "0.6.0"
 
 RESOLUTION_FORMATS = {
     "1080p": "bestvideo[height<=1080]+bestaudio/best[height<=1080]",
@@ -94,8 +94,8 @@ class DownloaderApp:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title(f"{APP_NAME} v{APP_VERSION}")
-        self.root.geometry("960x800")
-        self.root.minsize(840, 720)
+        self.root.geometry("1040x860")
+        self.root.minsize(900, 740)\n        self.root.configure(bg="#0f1115")
 
         self.events = queue.Queue()
         self.preview_worker = None
@@ -130,7 +130,7 @@ class DownloaderApp:
         self.progress_var = tk.DoubleVar(value=0)
         self.preview_title_var = tk.StringVar(value="No video preview loaded.")
         self.preview_detail_var = tk.StringVar(value="")
-        self.tools_var = tk.StringVar(value="Checking bundled tools…")
+        self.tools_var = tk.StringVar(value="Checking bundled tools…")\n        self.queue_count_var = tk.StringVar(value="No items queued")
 
         self._build_ui()
         self._refresh_tool_status()
@@ -156,104 +156,354 @@ class DownloaderApp:
         except Exception:
             pass
 
+    def _configure_styles(self):
+        self.colors = {
+            "bg": "#0f1115",
+            "card": "#171a21",
+            "card_alt": "#1d212a",
+            "input": "#11141a",
+            "border": "#2a303b",
+            "text": "#f5f7fa",
+            "muted": "#9ba5b3",
+            "accent": "#ff5b64",
+            "accent_hover": "#ff727a",
+            "secondary": "#262c37",
+            "secondary_hover": "#303745",
+            "success": "#55c989",
+            "warning": "#f0b35b",
+            "danger": "#ef6a73",
+            "running": "#77a7ff",
+        }
+
+        style = ttk.Style(self.root)
+        try:
+            style.theme_use("clam")
+        except tk.TclError:
+            pass
+
+        c = self.colors
+        default_font = ("SF Pro Text", 10) if sys.platform == "darwin" else ("Segoe UI", 10)
+        title_font = ("SF Pro Display", 24, "bold") if sys.platform == "darwin" else ("Segoe UI", 24, "bold")
+        section_font = ("SF Pro Text", 11, "bold") if sys.platform == "darwin" else ("Segoe UI", 11, "bold")
+        small_bold = ("SF Pro Text", 9, "bold") if sys.platform == "darwin" else ("Segoe UI", 9, "bold")
+
+        self.root.option_add("*Font", default_font)
+
+        style.configure("TFrame", background=c["bg"])
+        style.configure("Card.TFrame", background=c["card"])
+        style.configure("CardAlt.TFrame", background=c["card_alt"])
+
+        style.configure("TLabel", background=c["bg"], foreground=c["text"])
+        style.configure("Title.TLabel", background=c["bg"], foreground=c["text"], font=title_font)
+        style.configure("Subtitle.TLabel", background=c["bg"], foreground=c["muted"], font=default_font)
+        style.configure("Section.TLabel", background=c["card"], foreground=c["text"], font=section_font)
+        style.configure("Card.TLabel", background=c["card"], foreground=c["text"])
+        style.configure("MutedCard.TLabel", background=c["card"], foreground=c["muted"])
+        style.configure("Muted.TLabel", background=c["bg"], foreground=c["muted"])
+        style.configure("Accent.TLabel", background=c["bg"], foreground=c["accent"], font=small_bold)
+        style.configure(
+            "Version.TLabel",
+            background=c["secondary"],
+            foreground=c["text"],
+            padding=(10, 5),
+            font=small_bold,
+        )
+
+        style.configure(
+            "TEntry",
+            fieldbackground=c["input"],
+            foreground=c["text"],
+            insertcolor=c["text"],
+            bordercolor=c["border"],
+            lightcolor=c["border"],
+            darkcolor=c["border"],
+            padding=9,
+        )
+        style.map(
+            "TEntry",
+            bordercolor=[("focus", c["accent"])],
+            lightcolor=[("focus", c["accent"])],
+            darkcolor=[("focus", c["accent"])],
+        )
+
+        style.configure(
+            "TCombobox",
+            fieldbackground=c["input"],
+            background=c["input"],
+            foreground=c["text"],
+            arrowcolor=c["muted"],
+            bordercolor=c["border"],
+            lightcolor=c["border"],
+            darkcolor=c["border"],
+            padding=8,
+        )
+        style.map(
+            "TCombobox",
+            fieldbackground=[("readonly", c["input"]), ("disabled", c["card_alt"])],
+            foreground=[("readonly", c["text"]), ("disabled", c["muted"])],
+            background=[("readonly", c["input"]), ("disabled", c["card_alt"])],
+            bordercolor=[("focus", c["accent"])],
+        )
+
+        style.configure(
+            "Primary.TButton",
+            background=c["accent"],
+            foreground="#ffffff",
+            borderwidth=0,
+            focusthickness=0,
+            padding=(16, 10),
+            font=small_bold,
+        )
+        style.map(
+            "Primary.TButton",
+            background=[("active", c["accent_hover"]), ("disabled", "#5d3539")],
+            foreground=[("disabled", "#c99da0")],
+        )
+
+        style.configure(
+            "Secondary.TButton",
+            background=c["secondary"],
+            foreground=c["text"],
+            borderwidth=0,
+            focusthickness=0,
+            padding=(14, 9),
+            font=small_bold,
+        )
+        style.map(
+            "Secondary.TButton",
+            background=[("active", c["secondary_hover"]), ("disabled", "#1a1d24")],
+            foreground=[("disabled", "#66707e")],
+        )
+
+        style.configure(
+            "Danger.TButton",
+            background="#3a2226",
+            foreground="#ffb7bc",
+            borderwidth=0,
+            focusthickness=0,
+            padding=(14, 9),
+            font=small_bold,
+        )
+        style.map(
+            "Danger.TButton",
+            background=[("active", "#51292f"), ("disabled", "#22191b")],
+            foreground=[("disabled", "#73545a")],
+        )
+
+        style.configure(
+            "Treeview",
+            background=c["card_alt"],
+            fieldbackground=c["card_alt"],
+            foreground=c["text"],
+            borderwidth=0,
+            relief="flat",
+            rowheight=34,
+        )
+        style.map(
+            "Treeview",
+            background=[("selected", "#303847")],
+            foreground=[("selected", c["text"])],
+        )
+        style.configure(
+            "Treeview.Heading",
+            background="#222731",
+            foreground=c["muted"],
+            borderwidth=0,
+            relief="flat",
+            padding=(10, 9),
+            font=small_bold,
+        )
+        style.map("Treeview.Heading", background=[("active", "#292f3a")])
+
+        style.configure(
+            "Horizontal.TProgressbar",
+            troughcolor="#242a34",
+            background=c["accent"],
+            borderwidth=0,
+            lightcolor=c["accent"],
+            darkcolor=c["accent"],
+            thickness=10,
+        )
+
+        style.configure(
+            "TScrollbar",
+            background="#303641",
+            troughcolor=c["card_alt"],
+            bordercolor=c["card_alt"],
+            arrowcolor=c["muted"],
+        )
+
     def _build_ui(self):
-        outer = ttk.Frame(self.root, padding=18)
+        self._configure_styles()
+        c = self.colors
+
+        outer = ttk.Frame(self.root, padding=(24, 22, 24, 18))
         outer.pack(fill="both", expand=True)
 
+        header = ttk.Frame(outer)
+        header.pack(fill="x", pady=(0, 18))
+
+        header_left = ttk.Frame(header)
+        header_left.pack(side="left", fill="x", expand=True)
+
         ttk.Label(
-            outer,
-            text=APP_NAME,
-            font=("Segoe UI", 21, "bold"),
+            header_left,
+            text="MEDIA TOOL",
+            style="Accent.TLabel",
         ).pack(anchor="w")
 
         ttk.Label(
-            outer,
-            text=(
-                "Paste YouTube links and add them to the queue. Download as a "
-                "PowerPoint-friendly MP4 video, high-quality MP3 audio, or uncompressed WAV audio."
-            ),
-            wraplength=900,
-        ).pack(anchor="w", pady=(4, 16))
+            header_left,
+            text=APP_NAME,
+            style="Title.TLabel",
+        ).pack(anchor="w", pady=(1, 2))
 
-        url_frame = ttk.Frame(outer)
-        url_frame.pack(fill="x")
-        ttk.Label(url_frame, text="YouTube URL").grid(row=0, column=0, columnspan=3, sticky="w")
-        self.url_entry = ttk.Entry(url_frame, textvariable=self.url_var)
-        self.url_entry.grid(row=1, column=0, sticky="ew", pady=(4, 10))
-        self.preview_btn = ttk.Button(url_frame, text="Preview", command=self._start_preview)
-        self.preview_btn.grid(row=1, column=1, padx=(8, 0), pady=(4, 10))
-        self.add_queue_btn = ttk.Button(url_frame, text="Add to Queue", command=self._queue_current_url)
-        self.add_queue_btn.grid(row=1, column=2, padx=(8, 0), pady=(4, 10))
-        url_frame.columnconfigure(0, weight=1)
+        ttk.Label(
+            header_left,
+            text="Download video or audio, queue multiple items, and save them in presentation-friendly formats.",
+            style="Subtitle.TLabel",
+            wraplength=760,
+        ).pack(anchor="w")
+
+        ttk.Label(
+            header,
+            text=f"V{APP_VERSION}",
+            style="Version.TLabel",
+        ).pack(side="right", anchor="n", pady=(4, 0))
+
+        url_card = ttk.Frame(outer, style="Card.TFrame", padding=18)
+        url_card.pack(fill="x", pady=(0, 12))
+
+        url_header = ttk.Frame(url_card, style="Card.TFrame")
+        url_header.pack(fill="x", pady=(0, 10))
+        ttk.Label(url_header, text="Add a download", style="Section.TLabel").pack(side="left")
+        ttk.Label(
+            url_header,
+            text="Paste a YouTube link below",
+            style="MutedCard.TLabel",
+        ).pack(side="right")
+
+        url_row = ttk.Frame(url_card, style="Card.TFrame")
+        url_row.pack(fill="x")
+        self.url_entry = ttk.Entry(url_row, textvariable=self.url_var)
+        self.url_entry.pack(side="left", fill="x", expand=True)
+        self.preview_btn = ttk.Button(
+            url_row,
+            text="Preview",
+            style="Secondary.TButton",
+            command=self._start_preview,
+        )
+        self.preview_btn.pack(side="left", padx=(10, 0))
+        self.add_queue_btn = ttk.Button(
+            url_row,
+            text="Add to Queue",
+            style="Primary.TButton",
+            command=self._queue_current_url,
+        )
+        self.add_queue_btn.pack(side="left", padx=(10, 0))
         self.url_entry.focus_set()
         self.url_entry.bind("<Return>", lambda _event: self._queue_current_url())
 
-        preview = ttk.LabelFrame(outer, text="Media preview")
-        preview.pack(fill="x", pady=(0, 12))
+        preview_card = ttk.Frame(outer, style="Card.TFrame", padding=(18, 14))
+        preview_card.pack(fill="x", pady=(0, 12))
+
         ttk.Label(
-            preview,
+            preview_card,
+            text="PREVIEW",
+            style="MutedCard.TLabel",
+        ).pack(anchor="w")
+
+        ttk.Label(
+            preview_card,
             textvariable=self.preview_title_var,
-            font=("Segoe UI", 11, "bold"),
-            wraplength=880,
-        ).pack(anchor="w", padx=10, pady=(7, 2))
+            style="Section.TLabel",
+            wraplength=930,
+        ).pack(anchor="w", pady=(4, 2))
+
         ttk.Label(
-            preview,
+            preview_card,
             textvariable=self.preview_detail_var,
-            wraplength=880,
-        ).pack(anchor="w", padx=10, pady=(0, 7))
+            style="MutedCard.TLabel",
+            wraplength=930,
+        ).pack(anchor="w")
 
-        options = ttk.Frame(outer)
-        options.pack(fill="x")
+        options_card = ttk.Frame(outer, style="Card.TFrame", padding=18)
+        options_card.pack(fill="x", pady=(0, 12))
 
-        ttk.Label(options, text="Output format").grid(row=0, column=0, sticky="w")
-        ttk.Label(options, text="Maximum resolution").grid(row=0, column=1, sticky="w", padx=(18, 0))
-        ttk.Label(options, text="Save folder").grid(row=0, column=2, sticky="w", padx=(18, 0))
+        ttk.Label(options_card, text="Output settings", style="Section.TLabel").grid(
+            row=0, column=0, columnspan=3, sticky="w", pady=(0, 12)
+        )
+
+        ttk.Label(options_card, text="FORMAT", style="MutedCard.TLabel").grid(row=1, column=0, sticky="w")
+        ttk.Label(options_card, text="QUALITY", style="MutedCard.TLabel").grid(
+            row=1, column=1, sticky="w", padx=(18, 0)
+        )
+        ttk.Label(options_card, text="SAVE FOLDER", style="MutedCard.TLabel").grid(
+            row=1, column=2, sticky="w", padx=(18, 0)
+        )
 
         self.output_format_combo = ttk.Combobox(
-            options,
+            options_card,
             textvariable=self.output_format_var,
             values=OUTPUT_FORMATS,
             state="readonly",
-            width=15,
+            width=16,
         )
-        self.output_format_combo.grid(row=1, column=0, sticky="w", pady=(4, 10))
+        self.output_format_combo.grid(row=2, column=0, sticky="ew", pady=(5, 0))
         self.output_format_combo.bind("<<ComboboxSelected>>", self._on_output_format_changed)
 
         self.res_combo = ttk.Combobox(
-            options,
+            options_card,
             textvariable=self.res_var,
             values=list(RESOLUTION_FORMATS.keys()),
             state="readonly",
-            width=12,
+            width=13,
         )
-        self.res_combo.grid(row=1, column=1, sticky="w", padx=(18, 0), pady=(4, 10))
+        self.res_combo.grid(row=2, column=1, sticky="ew", padx=(18, 0), pady=(5, 0))
 
-        folder_row = ttk.Frame(options)
-        folder_row.grid(row=1, column=2, sticky="ew", padx=(18, 0), pady=(4, 10))
+        folder_row = ttk.Frame(options_card, style="Card.TFrame")
+        folder_row.grid(row=2, column=2, sticky="ew", padx=(18, 0), pady=(5, 0))
         ttk.Entry(folder_row, textvariable=self.folder_var).pack(side="left", fill="x", expand=True)
-        ttk.Button(folder_row, text="Browse…", command=self._browse).pack(side="left", padx=(8, 0))
-        options.columnconfigure(2, weight=1)
+        ttk.Button(
+            folder_row,
+            text="Browse",
+            style="Secondary.TButton",
+            command=self._browse,
+        ).pack(side="left", padx=(10, 0))
 
-        queue_frame = ttk.LabelFrame(outer, text="Download queue")
-        queue_frame.pack(fill="both", expand=True, pady=(2, 12))
+        options_card.columnconfigure(0, weight=0)
+        options_card.columnconfigure(1, weight=0)
+        options_card.columnconfigure(2, weight=1)
 
-        queue_table = ttk.Frame(queue_frame)
-        queue_table.pack(fill="both", expand=True, padx=8, pady=(8, 4))
+        queue_card = ttk.Frame(outer, style="Card.TFrame", padding=18)
+        queue_card.pack(fill="both", expand=True, pady=(0, 12))
+
+        queue_header = ttk.Frame(queue_card, style="Card.TFrame")
+        queue_header.pack(fill="x", pady=(0, 10))
+        ttk.Label(queue_header, text="Download queue", style="Section.TLabel").pack(side="left")
+        ttk.Label(
+            queue_header,
+            textvariable=self.queue_count_var,
+            style="MutedCard.TLabel",
+        ).pack(side="right")
+
+        queue_table = ttk.Frame(queue_card, style="CardAlt.TFrame")
+        queue_table.pack(fill="both", expand=True)
 
         self.queue_tree = ttk.Treeview(
             queue_table,
             columns=("title", "format", "quality", "status"),
             show="headings",
-            height=7,
+            height=8,
             selectmode="extended",
         )
-        self.queue_tree.heading("title", text="Media")
-        self.queue_tree.heading("format", text="Format")
-        self.queue_tree.heading("quality", text="Quality")
-        self.queue_tree.heading("status", text="Status")
-        self.queue_tree.column("title", width=500, minwidth=260, stretch=True)
-        self.queue_tree.column("format", width=105, minwidth=90, stretch=False, anchor="center")
-        self.queue_tree.column("quality", width=85, minwidth=70, stretch=False, anchor="center")
+        self.queue_tree.heading("title", text="MEDIA")
+        self.queue_tree.heading("format", text="FORMAT")
+        self.queue_tree.heading("quality", text="QUALITY")
+        self.queue_tree.heading("status", text="STATUS")
+        self.queue_tree.column("title", width=560, minwidth=300, stretch=True)
+        self.queue_tree.column("format", width=100, minwidth=90, stretch=False, anchor="center")
+        self.queue_tree.column("quality", width=105, minwidth=85, stretch=False, anchor="center")
         self.queue_tree.column("status", width=125, minwidth=105, stretch=False, anchor="center")
 
         scrollbar = ttk.Scrollbar(queue_table, orient="vertical", command=self.queue_tree.yview)
@@ -261,41 +511,96 @@ class DownloaderApp:
         self.queue_tree.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
-        queue_buttons = ttk.Frame(queue_frame)
-        queue_buttons.pack(fill="x", padx=8, pady=(0, 8))
-        self.cancel_btn = ttk.Button(queue_buttons, text="Cancel Current", command=self._cancel_current)
+        self.queue_tree.tag_configure("Queued", foreground=c["muted"])
+        self.queue_tree.tag_configure("Running", foreground=c["running"])
+        self.queue_tree.tag_configure("Complete", foreground=c["success"])
+        self.queue_tree.tag_configure("Failed", foreground=c["danger"])
+        self.queue_tree.tag_configure("Cancelled", foreground=c["warning"])
+
+        queue_buttons = ttk.Frame(queue_card, style="Card.TFrame")
+        queue_buttons.pack(fill="x", pady=(12, 0))
+
+        self.cancel_btn = ttk.Button(
+            queue_buttons,
+            text="Cancel Current",
+            style="Danger.TButton",
+            command=self._cancel_current,
+        )
         self.cancel_btn.pack(side="left")
-        ttk.Button(queue_buttons, text="Remove Selected", command=self._remove_selected).pack(side="left", padx=(8, 0))
-        ttk.Button(queue_buttons, text="Clear Finished", command=self._clear_finished).pack(side="left", padx=(8, 0))
-        ttk.Button(queue_buttons, text="Open Save Folder", command=self._open_folder).pack(side="right")
+
+        ttk.Button(
+            queue_buttons,
+            text="Remove Selected",
+            style="Secondary.TButton",
+            command=self._remove_selected,
+        ).pack(side="left", padx=(8, 0))
+
+        ttk.Button(
+            queue_buttons,
+            text="Clear Finished",
+            style="Secondary.TButton",
+            command=self._clear_finished,
+        ).pack(side="left", padx=(8, 0))
+
+        ttk.Button(
+            queue_buttons,
+            text="Open Save Folder",
+            style="Secondary.TButton",
+            command=self._open_folder,
+        ).pack(side="right")
+
+        progress_card = ttk.Frame(outer, style="Card.TFrame", padding=(18, 14))
+        progress_card.pack(fill="x", pady=(0, 12))
+
+        progress_top = ttk.Frame(progress_card, style="Card.TFrame")
+        progress_top.pack(fill="x", pady=(0, 8))
+        ttk.Label(progress_top, text="CURRENT ACTIVITY", style="MutedCard.TLabel").pack(side="left")
+        ttk.Label(progress_top, textvariable=self.status_var, style="Card.TLabel").pack(side="right")
 
         ttk.Progressbar(
-            outer,
+            progress_card,
             variable=self.progress_var,
             maximum=100,
-        ).pack(fill="x", pady=(2, 5))
-        ttk.Label(outer, textvariable=self.status_var).pack(anchor="w")
+            style="Horizontal.TProgressbar",
+        ).pack(fill="x")
 
-        activity = ttk.LabelFrame(outer, text="Activity")
-        activity.pack(fill="both", expand=True, pady=(10, 0))
-        self.log = tk.Text(activity, height=7, wrap="word", state="disabled")
-        self.log.pack(fill="both", expand=True, padx=8, pady=8)
+        activity_card = ttk.Frame(outer, style="Card.TFrame", padding=14)
+        activity_card.pack(fill="both", expand=False, pady=(0, 10))
 
-        legal = ttk.Label(
-            outer,
-            text=(
-                "Use only for videos/audio you own or are authorised to download. "
-                "The app does not attempt to bypass DRM or protected streaming restrictions."
-            ),
-            wraplength=900,
+        ttk.Label(activity_card, text="Activity log", style="Section.TLabel").pack(anchor="w", pady=(0, 8))
+
+        self.log = tk.Text(
+            activity_card,
+            height=5,
+            wrap="word",
+            state="disabled",
+            bg=c["input"],
+            fg=c["muted"],
+            insertbackground=c["text"],
+            selectbackground="#344158",
+            selectforeground=c["text"],
+            borderwidth=0,
+            relief="flat",
+            padx=10,
+            pady=8,
+            font=("Consolas", 9) if os.name == "nt" else ("Menlo", 9),
         )
-        legal.pack(anchor="w", pady=(8, 0))
+        self.log.pack(fill="both", expand=True)
+
+        footer = ttk.Frame(outer)
+        footer.pack(fill="x")
 
         ttk.Label(
-            outer,
+            footer,
+            text="Only download media you own or are authorised to use.",
+            style="Muted.TLabel",
+        ).pack(side="left")
+
+        ttk.Label(
+            footer,
             textvariable=self.tools_var,
-            font=("Segoe UI", 9),
-        ).pack(anchor="w", pady=(5, 0))
+            style="Muted.TLabel",
+        ).pack(side="right")
 
     def _refresh_tool_status(self):
         states = []
@@ -485,7 +790,9 @@ class DownloaderApp:
             "end",
             iid=str(job["id"]),
             values=(job["title"], output_format.replace(" Video", "").replace(" Audio", ""), quality, job["status"]),
+            tags=("Queued",),
         )
+        self._refresh_queue_count()
 
         self._append_log(f"Queued {output_format}: {display_title}")
         self.url_var.set("")
@@ -953,6 +1260,7 @@ class DownloaderApp:
             iid = str(job_id)
             if self.queue_tree.exists(iid):
                 self.queue_tree.delete(iid)
+        self._refresh_queue_count()
 
         if blocked:
             messagebox.showinfo(
@@ -973,6 +1281,7 @@ class DownloaderApp:
             iid = str(job_id)
             if self.queue_tree.exists(iid):
                 self.queue_tree.delete(iid)
+        self._refresh_queue_count()
 
     def _update_tree(self, job_id, title=None, status=None):
         iid = str(job_id)
@@ -988,7 +1297,8 @@ class DownloaderApp:
         if status is not None:
             values[3] = status
 
-        self.queue_tree.item(iid, values=values)
+        tags = (status,) if status is not None else self.queue_tree.item(iid, "tags")
+        self.queue_tree.item(iid, values=values, tags=tags)
 
     def _display_preview(self, url, info):
         self.preview_info = info
@@ -1008,6 +1318,26 @@ class DownloaderApp:
             for job in self.jobs:
                 counts[job["status"]] = counts.get(job["status"], 0) + 1
         return counts
+
+    def _refresh_queue_count(self):
+        counts = self._queue_summary()
+        total = sum(counts.values())
+        if total == 0:
+            self.queue_count_var.set("No items queued")
+            return
+
+        parts = [f"{total} item" + ("" if total == 1 else "s")]
+        if counts.get("Running"):
+            parts.append(f"{counts['Running']} running")
+        if counts.get("Queued"):
+            parts.append(f"{counts['Queued']} queued")
+        if counts.get("Complete"):
+            parts.append(f"{counts['Complete']} complete")
+        if counts.get("Failed"):
+            parts.append(f"{counts['Failed']} failed")
+        if counts.get("Cancelled"):
+            parts.append(f"{counts['Cancelled']} cancelled")
+        self.queue_count_var.set("  •  ".join(parts))
 
     def _process_events(self):
         try:
@@ -1048,6 +1378,7 @@ class DownloaderApp:
                 elif kind == "job_status":
                     _, job_id, state = event
                     self._update_tree(job_id, status=state)
+                    self._refresh_queue_count()
                     self.progress_var.set(0)
                     self.status_var.set("Starting next queued download…")
                     self._refresh_controls()
@@ -1061,6 +1392,7 @@ class DownloaderApp:
                 elif kind == "job_done":
                     _, job_id, output = event
                     self._update_tree(job_id, status="Complete")
+                    self._refresh_queue_count()
                     self.progress_var.set(100)
                     self.status_var.set("Saved: " + Path(output).name)
                     self._append_log(f"Saved: {output}")
@@ -1068,6 +1400,7 @@ class DownloaderApp:
                 elif kind == "job_error":
                     _, job_id, state, message = event
                     self._update_tree(job_id, status=state)
+                    self._refresh_queue_count()
                     self.status_var.set(state)
                     if state == "Failed":
                         self._append_log(f"Failed: {message}")
