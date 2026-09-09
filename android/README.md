@@ -1,6 +1,6 @@
 # YouTube Downloader — Android V0.1 Proof of Concept
 
-This folder contains the first native Android version of YouTube Downloader.
+This folder contains the first native Android version of YouTube Downloader. GitHub Actions produces an installable test APK automatically.
 
 ## Purpose of V0.1
 
