@@ -1,64 +1,51 @@
-# Kids Church Video Downloader V0.3
+# YouTube Downloader V0.4
 
-A Windows-first desktop application for downloading **authorised** online video and creating predictable MP4 files suitable for embedding in PowerPoint.
+A Windows desktop app for downloading **authorised** YouTube media and saving it either as a PowerPoint-friendly MP4 video or an uncompressed WAV audio file.
 
-## New in V0.3: download queue
+## New in V0.4
 
-You can now queue multiple videos without waiting for each one to finish.
+- App title changed from **Kids Church Video Downloader** to **YouTube Downloader**
+- Added **WAV Audio** output
+- Added an **Output format** selector:
+  - MP4 Video
+  - WAV Audio
+- WAV jobs download the best available audio stream and convert it to:
+  - WAV container
+  - 16-bit PCM
+  - 48 kHz
+  - stereo
+- Resolution selection is automatically disabled when WAV Audio is selected
+- Queue now shows the chosen output format as well as quality/status
+- Existing V0.3 save-folder and resolution preferences are retained after upgrading
+
+## Download queue
+
+You can queue multiple items without waiting for the current one to finish.
 
 Typical workflow:
 
-1. Paste a video URL.
+1. Paste a YouTube URL.
 2. Optionally click **Preview**.
-3. Choose the resolution and save folder.
-4. Click **Add to Queue**.
-5. Paste the next URL and repeat.
+3. Select **MP4 Video** or **WAV Audio**.
+4. For MP4, choose 1080p / 720p / 480p.
+5. Choose the save folder.
+6. Click **Add to Queue**.
+7. Paste the next URL and repeat.
 
-The queue starts automatically and processes items one-by-one. This is deliberate: sequential downloading/conversion is much more predictable on a church laptop than running several FFmpeg conversions simultaneously, while still letting you enter a whole batch at once.
+Downloads run automatically one-by-one. This keeps resource use predictable while still allowing a whole batch to be entered quickly.
 
-The queue shows:
+Queue controls:
 
-- video title / URL
-- selected quality
-- Queued / Running / Complete / Failed / Cancelled status
+- Cancel Current
+- Remove Selected
+- Clear Finished
+- Open Save Folder
 
-Queue controls include:
+Cancelling the current item does not discard the rest of the queue.
 
-- **Cancel Current**
-- **Remove Selected**
-- **Clear Finished**
-- **Open Save Folder**
+## MP4 output
 
-Cancelling the current item does not discard the remaining queue; the next queued item continues automatically.
-
-## Other V0.3 improvements
-
-- The URL box stays available while the queue is working, so more videos can be added at any time.
-- Each queued job remembers the resolution and destination folder selected when it was added.
-- Preview metadata is reused when available.
-- Bundled tool folders are explicitly added to the child-process PATH so yt-dlp can locate the bundled Deno runtime reliably.
-- Source development also recognises tools stored in the repository's `tools` folder.
-
-## Core features
-
-- Windows desktop app
-- 1080p / 720p / 480p maximum resolution
-- Video preview:
-  - title
-  - channel/uploader
-  - duration
-  - extractor/site
-- Remembers the last save folder and resolution
-- Bundled yt-dlp
-- Bundled Deno
-- Bundled FFmpeg / ffprobe
-- Download and conversion progress
-- Automatic Windows installer builds with GitHub Actions
-- Portable Windows build artifact
-
-## Output format
-
-The final file is deliberately normalised for PowerPoint:
+MP4 files are normalised for PowerPoint compatibility:
 
 - MP4 container
 - H.264 video
@@ -66,26 +53,37 @@ The final file is deliberately normalised for PowerPoint:
 - yuv420p pixel format
 - fast-start metadata
 
+## WAV output
+
+WAV files are converted to:
+
+- WAV container
+- PCM signed 16-bit little-endian
+- 48 kHz sample rate
+- 2-channel stereo
+
+This produces large but highly compatible, uncompressed audio files.
+
 ## Important use note
 
 Only download media you own or are authorised to download. The application does not implement DRM circumvention, browser-cookie extraction, account-login automation, or protected-stream bypassing.
 
-## Easiest way to get a test build
+## Automatic Windows build
 
-The repository contains a GitHub Actions workflow called:
+Every push to `main` runs the GitHub Actions workflow:
 
     Build Windows Installer
 
-Every push to `main` runs the Windows build automatically. The workflow produces:
+It produces:
 
-1. `KidsChurchVideoDownloader-Windows-Installer`
-2. `KidsChurchVideoDownloader-Windows-Portable`
+1. `YouTubeDownloader-Windows-Installer`
+2. `YouTubeDownloader-Windows-Portable`
 
-For normal testing, download the installer artifact and run:
+The installer filename is:
 
-    KidsChurchVideoDownloader_Setup_v0.3.0.exe
+    YouTubeDownloader_Setup_v0.4.0.exe
 
-## Building locally on Windows
+## Building locally
 
 Requirements:
 
@@ -97,42 +95,28 @@ Run:
 
     build_windows.bat
 
-The script automatically downloads the current Windows versions of yt-dlp, Deno, FFmpeg and ffprobe, then builds:
+The script downloads yt-dlp, Deno, FFmpeg and ffprobe and creates:
 
-    dist\KidsChurchVideoDownloader\KidsChurchVideoDownloader.exe
+    dist\YouTubeDownloader\YouTubeDownloader.exe
 
-To create the installer, install Inno Setup 6 and run:
+After installing Inno Setup 6, run:
 
     make_installer.bat
 
-The installer will appear in:
+The installer is created at:
 
-    installer_output\KidsChurchVideoDownloader_Setup_v0.3.0.exe
+    installer_output\YouTubeDownloader_Setup_v0.4.0.exe
 
-## V0.3 test checklist
+## V0.4 test checklist
 
-Test the queue with three authorised videos:
+Try at least:
 
-- add all three before the first finishes
-- verify each title appears in the queue
-- verify they process automatically in order
-- add a fourth while another item is running
-- cancel one current download and confirm the next begins
-- verify completed MP4 files contain picture and audio
-- embed at least one result into PowerPoint and test it in slideshow mode
-- restart the app and confirm the save folder is remembered
-
-## Possible next features
-
-- thumbnail preview
-- drag-and-drop URLs
-- paste multiple URLs at once
-- audio-only mode
-- start/end trimming
-- reorder queued items
-- optional limited parallel downloading
-- faster no-transcode path for already-compatible media
-- in-app component updater
-- application icon and visual polish
+- one MP4 video
+- one WAV audio download
+- a mixed queue containing both MP4 and WAV jobs
+- add another job while the queue is running
+- confirm WAV plays correctly in Windows
+- confirm MP4 still embeds and plays correctly in PowerPoint
+- cancel one item and confirm the next item continues
 
 See `THIRD_PARTY_NOTICES.md` for bundled-tool licensing notes.
