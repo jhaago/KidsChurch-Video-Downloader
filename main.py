@@ -95,7 +95,8 @@ class DownloaderApp:
         self.root = root
         self.root.title(f"{APP_NAME} v{APP_VERSION}")
         self.root.geometry("1040x860")
-        self.root.minsize(900, 740)\n        self.root.configure(bg="#0f1115")
+        self.root.minsize(900, 740)
+        self.root.configure(bg="#0f1115")
 
         self.events = queue.Queue()
         self.preview_worker = None
@@ -130,7 +131,8 @@ class DownloaderApp:
         self.progress_var = tk.DoubleVar(value=0)
         self.preview_title_var = tk.StringVar(value="No video preview loaded.")
         self.preview_detail_var = tk.StringVar(value="")
-        self.tools_var = tk.StringVar(value="Checking bundled tools…")\n        self.queue_count_var = tk.StringVar(value="No items queued")
+        self.tools_var = tk.StringVar(value="Checking bundled tools…")
+        self.queue_count_var = tk.StringVar(value="No items queued")
 
         self._build_ui()
         self._refresh_tool_status()
