@@ -1,6 +1,6 @@
 # Third-party notices
 
-Kids Church Video Downloader V0.2 is designed to ship with separate third-party executables beside the application.
+YouTube Downloader is designed to ship with separate third-party executables beside the application.
 
 ## yt-dlp
 
@@ -20,6 +20,6 @@ Build source: https://github.com/BtbN/FFmpeg-Builds
 
 FFmpeg project: https://ffmpeg.org/
 
-The current build pipeline uses the Windows x64 GPL static build so that H.264 encoding through libx264 is available for the PowerPoint compatibility conversion.
+The current build pipeline uses the Windows x64 GPL static build so that H.264 encoding through libx264 is available for PowerPoint-compatible MP4 conversion. FFmpeg is also used to create PCM WAV audio files.
 
-This V0.2 repository is currently intended for private development and testing. Before wider public redistribution of compiled installers, the third-party license files and source-offer requirements for the exact bundled FFmpeg build should be packaged and reviewed.
+This repository is currently intended for private development and testing. Before wider public redistribution of compiled installers, the third-party license files and source-offer requirements for the exact bundled FFmpeg build should be packaged and reviewed.
