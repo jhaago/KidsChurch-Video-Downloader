@@ -44,7 +44,7 @@ The source media is first processed in the app's temporary storage. The complete
 - arm64-v8a or x86_64 device
 - internet access
 
-The primary real-device target is modern arm64 Android phones.
+The primary real-device target is modern arm64 Android phones, including current Samsung Galaxy devices.
 
 ## Install the test APK
 
