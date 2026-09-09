@@ -1,86 +1,122 @@
-# Kids Church Video Downloader V0.1
+# Kids Church Video Downloader V0.2
 
-A small Windows-first desktop application for downloading **authorised** online video and producing a predictable MP4 suitable for PowerPoint.
+A Windows-first desktop application for downloading **authorised** online video and creating a predictable MP4 suitable for embedding in PowerPoint.
 
-## V0.1 features
+## What V0.2 adds
 
-- Paste a video URL
-- 1080p / 720p / 480p maximum resolution
-- Choose save folder
-- Download progress
-- Cancel
-- Automatic conversion to:
-  - MP4 container
-  - H.264 video
-  - AAC audio
-  - yuv420p pixel format
-  - fast-start metadata
-- Avoids overwriting existing files
-- Opens the destination folder
-- Does not use browser cookies or attempt DRM bypass
+- Uses the official standalone **yt-dlp.exe** instead of embedding the Python yt-dlp package
+- Bundles **Deno** for current YouTube JavaScript challenge support
+- Bundles **FFmpeg / ffprobe**
+- Video preview before downloading:
+  - title
+  - channel/uploader
+  - duration
+  - extractor/site
+- Remembers the last save folder and resolution
+- More robust cancellation of yt-dlp and FFmpeg child processes
+- Download and conversion progress
+- Automatic GitHub Actions Windows build
+- Normal Inno Setup installer
+- Portable Windows build artifact
+
+## Output format
+
+The final file is deliberately normalised for PowerPoint:
+
+- MP4 container
+- H.264 video
+- AAC audio
+- yuv420p pixel format
+- fast-start metadata
+
+V0.2 always performs the final compatibility conversion rather than trusting the codec/container supplied by the source site.
 
 ## Important use note
 
-Only download media you own or are authorised to download. This project intentionally does not implement DRM circumvention, browser-cookie extraction, account-login automation, or protected-stream bypassing.
+Only download media you own or are authorised to download. The application does not implement DRM circumvention, browser-cookie extraction, account-login automation, or protected-stream bypassing.
 
-## Development setup (Windows)
+## Easiest way to get a test build
 
-1. Install Python 3.12+.
-2. Install FFmpeg and make sure `ffmpeg.exe` is available on PATH.
-3. Open Command Prompt in this folder.
-4. Run:
+The repository contains a GitHub Actions workflow called:
 
-    py -m pip install -r requirements.txt
+    Build Windows Installer
 
-5. Start the app:
+Every push to `main` runs the Windows build automatically. The workflow produces two downloadable artifacts:
 
-    py main.py
+1. `KidsChurchVideoDownloader-Windows-Installer`
+2. `KidsChurchVideoDownloader-Windows-Portable`
 
-## Packaging as a Windows EXE
+For normal testing, download the installer artifact and run:
 
-For the most reliable standalone build:
+    KidsChurchVideoDownloader_Setup_v0.2.0.exe
 
-1. Download a Windows FFmpeg build.
-2. Copy `ffmpeg.exe` into this project folder.
-3. Run:
+## Building locally on Windows
+
+Requirements:
+
+- Windows 10/11 x64
+- Python 3.12+
+- Internet access during the build
+
+Run:
 
     build_windows.bat
 
-The built application will appear in:
+The script automatically runs `prepare_tools.ps1`, which downloads the current Windows versions of:
 
-    dist\KidsChurchVideoDownloader\
+- yt-dlp
+- Deno
+- FFmpeg
+- ffprobe
 
-The build script copies `ffmpeg.exe` beside the EXE.
+It then builds:
 
-## YouTube note
+    dist\KidsChurchVideoDownloader\KidsChurchVideoDownloader.exe
 
-YouTube changes its delivery/player systems regularly. yt-dlp is deliberately kept as a replaceable dependency so the downloader engine can be updated without rewriting the UI.
-
-Some YouTube formats/player challenges may also require a supported JavaScript runtime on a given yt-dlp release. That packaging can be added in the next version after testing V0.1 on the target Windows machine.
-
-## Next recommended features
-
-- Video metadata preview / thumbnail
-- Download queue
-- Start/end trim controls
-- Audio-only mode
-- Remember last save folder
-- App settings
-- Built-in yt-dlp update check
-- Bundled JavaScript runtime if required for reliable YouTube extraction
-- Proper installer (Inno Setup or MSIX)
-
-## Creating the normal Windows installer
-
-After `build_windows.bat` succeeds:
-
-1. Install Inno Setup 6.
-2. Run:
+To create the installer, install Inno Setup 6 and run:
 
     make_installer.bat
 
-3. The finished installer will appear in:
+The installer will appear in:
 
-    installer_output\KidsChurchVideoDownloader_Setup_v0.1.0.exe
+    installer_output\KidsChurchVideoDownloader_Setup_v0.2.0.exe
 
-That installer creates a normal Windows application entry and optional desktop shortcut.
+## Bundled-tool architecture
+
+The installed folder contains separate executables:
+
+    KidsChurchVideoDownloader.exe
+    yt-dlp.exe
+    deno.exe
+    ffmpeg.exe
+    ffprobe.exe
+
+Keeping these components separate is deliberate. YouTube changes frequently, and this architecture lets the downloader engine/runtime be updated without redesigning the desktop UI.
+
+## Current V0.2 test goals
+
+Before adding more features, test the packaged app with several authorised video links and verify:
+
+- Preview loads correctly
+- 1080p, 720p and 480p selections work
+- Audio is present
+- Final MP4 embeds and plays correctly in PowerPoint
+- Cancel stops both download and conversion
+- Save folder is remembered after restarting
+- Filenames containing punctuation do not break the download
+- A second download with the same title does not overwrite the first
+
+## Likely V0.3 features
+
+After the first real Windows tests:
+
+- thumbnail preview
+- download queue
+- audio-only mode
+- start/end trimming
+- faster no-transcode path when the source is already PowerPoint-compatible
+- in-app component/version display
+- updater for yt-dlp/Deno components
+- application icon and visual polish
+
+See `THIRD_PARTY_NOTICES.md` for the current bundled-tool licensing notes.
