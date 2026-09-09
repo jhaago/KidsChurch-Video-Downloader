@@ -57,15 +57,15 @@ jobs:
         run: |
           test -d "dist/YouTube Downloader.app"
           codesign --verify --deep --strict "dist/YouTube Downloader.app"
-          test -f "macos_output/YouTubeDownloader-macOS-${{ matrix.label }}-v0.6.1.dmg"
-          test -f "macos_output/YouTubeDownloader-macOS-${{ matrix.label }}-v0.6.1.zip"
+          test -f "macos_output/YouTubeDownloader-macOS-${{ matrix.label }}-v0.6.2.dmg"
+          test -f "macos_output/YouTubeDownloader-macOS-${{ matrix.label }}-v0.6.2.zip"
 
       - name: Upload macOS build
         uses: actions/upload-artifact@v4
         with:
           name: YouTubeDownloader-macOS-${{ matrix.label }}
           path: |
-            macos_output/YouTubeDownloader-macOS-${{ matrix.label }}-v0.6.1.dmg
-            macos_output/YouTubeDownloader-macOS-${{ matrix.label }}-v0.6.1.zip
+            macos_output/YouTubeDownloader-macOS-${{ matrix.label }}-v0.6.2.dmg
+            macos_output/YouTubeDownloader-macOS-${{ matrix.label }}-v0.6.2.zip
           if-no-files-found: error
           compression-level: 0
