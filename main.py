@@ -12,7 +12,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 
 APP_NAME = "YouTube Downloader"
-APP_VERSION = "0.6.0"
+APP_VERSION = "0.6.1"
 
 RESOLUTION_FORMATS = {
     "1080p": "bestvideo[height<=1080]+bestaudio/best[height<=1080]",
@@ -118,6 +118,7 @@ class DownloaderApp:
         self.res_var = tk.StringVar(value=settings.get("resolution", "1080p"))
         if self.res_var.get() not in RESOLUTION_FORMATS:
             self.res_var.set("1080p")
+        self.quality_var = tk.StringVar(value=self.res_var.get())
 
         saved_output_format = settings.get("output_format", "MP4 Video")
         if saved_output_format not in OUTPUT_FORMATS:
@@ -456,12 +457,13 @@ class DownloaderApp:
 
         self.res_combo = ttk.Combobox(
             options_card,
-            textvariable=self.res_var,
+            textvariable=self.quality_var,
             values=list(RESOLUTION_FORMATS.keys()),
             state="readonly",
-            width=13,
+            width=27,
         )
         self.res_combo.grid(row=2, column=1, sticky="ew", padx=(18, 0), pady=(5, 0))
+        self.res_combo.bind("<<ComboboxSelected>>", self._on_quality_changed)
 
         folder_row = ttk.Frame(options_card, style="Card.TFrame")
         folder_row.grid(row=2, column=2, sticky="ew", padx=(18, 0), pady=(5, 0))
@@ -637,11 +639,34 @@ class DownloaderApp:
         self._apply_output_format_state()
         self._save_settings()
 
-    def _apply_output_format_state(self):
+    def _on_quality_changed(self, _event=None):
         if self.output_format_var.get() == "MP4 Video":
-            self.res_combo.configure(state="readonly")
+            selected = self.quality_var.get()
+            if selected in RESOLUTION_FORMATS:
+                self.res_var.set(selected)
+                self._save_settings()
+
+    def _apply_output_format_state(self):
+        output_format = self.output_format_var.get()
+
+        if output_format == "MP4 Video":
+            self.res_combo.configure(
+                state="readonly",
+                values=list(RESOLUTION_FORMATS.keys()),
+            )
+            self.quality_var.set(self.res_var.get())
+        elif output_format == "MP3 Audio":
+            self.res_combo.configure(
+                state="disabled",
+                values=("320 kbps • 48 kHz stereo",),
+            )
+            self.quality_var.set("320 kbps • 48 kHz stereo")
         else:
-            self.res_combo.configure(state="disabled")
+            self.res_combo.configure(
+                state="disabled",
+                values=("16-bit PCM • 48 kHz stereo",),
+            )
+            self.quality_var.set("16-bit PCM • 48 kHz stereo")
 
     def _refresh_controls(self):
         preview_busy = self._preview_busy()
