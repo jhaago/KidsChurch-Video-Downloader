@@ -40,18 +40,18 @@ jobs:
       - name: Build Windows application
         shell: pwsh
         run: |
-          python -m PyInstaller --noconfirm --clean --windowed --onedir --name KidsChurchVideoDownloader main.py
-          Copy-Item tools\yt-dlp.exe dist\KidsChurchVideoDownloader\yt-dlp.exe
-          Copy-Item tools\deno.exe dist\KidsChurchVideoDownloader\deno.exe
-          Copy-Item tools\ffmpeg.exe dist\KidsChurchVideoDownloader\ffmpeg.exe
-          Copy-Item tools\ffprobe.exe dist\KidsChurchVideoDownloader\ffprobe.exe
-          Copy-Item THIRD_PARTY_NOTICES.md dist\KidsChurchVideoDownloader\THIRD_PARTY_NOTICES.md
+          python -m PyInstaller --noconfirm --clean --windowed --onedir --name YouTubeDownloader main.py
+          Copy-Item tools\yt-dlp.exe dist\YouTubeDownloader\yt-dlp.exe
+          Copy-Item tools\deno.exe dist\YouTubeDownloader\deno.exe
+          Copy-Item tools\ffmpeg.exe dist\YouTubeDownloader\ffmpeg.exe
+          Copy-Item tools\ffprobe.exe dist\YouTubeDownloader\ffprobe.exe
+          Copy-Item THIRD_PARTY_NOTICES.md dist\YouTubeDownloader\THIRD_PARTY_NOTICES.md
 
       - name: Verify portable build contents
         shell: pwsh
         run: |
           $required = @(
-            "KidsChurchVideoDownloader.exe",
+            "YouTubeDownloader.exe",
             "yt-dlp.exe",
             "deno.exe",
             "ffmpeg.exe",
@@ -59,7 +59,7 @@ jobs:
             "THIRD_PARTY_NOTICES.md"
           )
           foreach ($file in $required) {
-            $path = Join-Path "dist\KidsChurchVideoDownloader" $file
+            $path = Join-Path "dist\YouTubeDownloader" $file
             if (-not (Test-Path $path)) {
               throw "Missing packaged file: $path"
             }
@@ -85,15 +85,15 @@ jobs:
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
-          name: KidsChurchVideoDownloader-Windows-Installer
-          path: installer_output\KidsChurchVideoDownloader_Setup_v0.3.0.exe
+          name: YouTubeDownloader-Windows-Installer
+          path: installer_output\YouTubeDownloader_Setup_v0.4.0.exe
           if-no-files-found: error
           compression-level: 0
 
       - name: Upload portable build
         uses: actions/upload-artifact@v4
         with:
-          name: KidsChurchVideoDownloader-Windows-Portable
-          path: dist\KidsChurchVideoDownloader\
+          name: YouTubeDownloader-Windows-Portable
+          path: dist\YouTubeDownloader\
           if-no-files-found: error
           compression-level: 0
