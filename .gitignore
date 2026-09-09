@@ -3,8 +3,17 @@ __pycache__/
 build/
 dist/
 installer_output/
+macos_output/
+macos_package/
+node_modules/
 *.spec
+*.dmg
+.DS_Store
 tools/*.exe
 tools/*.zip
+tools/yt-dlp
+tools/deno
+tools/ffmpeg
+tools/ffprobe
 tools/ffmpeg/
 tools/deno/
