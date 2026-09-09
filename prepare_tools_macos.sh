@@ -45,7 +45,7 @@ npm init -y >/dev/null 2>&1
 npm install --silent --no-audit --no-fund ffmpeg-static@5.3.0 @derhuerst/ffprobe-static@5.3.0
 
 FFMPEG_PATH="$(node -e "process.stdout.write(require('ffmpeg-static'))")"
-FFPROBE_PATH="$(node -e "process.stdout.write(require('@derhuerst/ffprobe-static').path)")"
+FFPROBE_PATH="$(node -e "process.stdout.write(require('@derhuerst/ffprobe-static'))")"
 
 cp "$FFMPEG_PATH" "$TOOLS/ffmpeg"
 cp "$FFPROBE_PATH" "$TOOLS/ffprobe"
