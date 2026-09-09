@@ -18,7 +18,7 @@ else
 fi
 
 echo "=========================================="
-echo "YouTube Downloader V0.6.1 - macOS $ARCH_LABEL"
+echo "YouTube Downloader V0.6.2 - macOS $ARCH_LABEL"
 echo "=========================================="
 echo ""
 
@@ -65,8 +65,8 @@ echo "Verifying bundled tools..."
 mkdir -p macos_output macos_package
 cp -R "$APP" "macos_package/$APP_NAME.app"
 
-ZIP_PATH="macos_output/YouTubeDownloader-macOS-$ARCH_LABEL-v0.6.1.zip"
-DMG_PATH="macos_output/YouTubeDownloader-macOS-$ARCH_LABEL-v0.6.1.dmg"
+ZIP_PATH="macos_output/YouTubeDownloader-macOS-$ARCH_LABEL-v0.6.2.zip"
+DMG_PATH="macos_output/YouTubeDownloader-macOS-$ARCH_LABEL-v0.6.2.dmg"
 
 echo "Creating app ZIP..."
 ditto -c -k --sequesterRsrc --keepParent "$APP" "$ZIP_PATH"
