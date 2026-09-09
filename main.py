@@ -12,7 +12,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 
 APP_NAME = "YouTube Downloader"
-APP_VERSION = "0.4.0"
+APP_VERSION = "0.5.0"
 
 RESOLUTION_FORMATS = {
     "1080p": "bestvideo[height<=1080]+bestaudio/best[height<=1080]",
@@ -20,7 +20,7 @@ RESOLUTION_FORMATS = {
     "480p": "bestvideo[height<=480]+bestaudio/best[height<=480]",
 }
 
-OUTPUT_FORMATS = ("MP4 Video", "WAV Audio")
+OUTPUT_FORMATS = ("MP4 Video", "MP3 Audio", "WAV Audio")
 MEDIA_EXTENSIONS = {
     ".mkv", ".mp4", ".webm", ".mov", ".m4v",
     ".m4a", ".aac", ".opus", ".ogg", ".mp3", ".wav"
@@ -170,7 +170,7 @@ class DownloaderApp:
             outer,
             text=(
                 "Paste YouTube links and add them to the queue. Download as a "
-                "PowerPoint-friendly MP4 video or uncompressed WAV audio."
+                "PowerPoint-friendly MP4 video, high-quality MP3 audio, or uncompressed WAV audio."
             ),
             wraplength=900,
         ).pack(anchor="w", pady=(4, 16))
@@ -331,10 +331,10 @@ class DownloaderApp:
         self._save_settings()
 
     def _apply_output_format_state(self):
-        if self.output_format_var.get() == "WAV Audio":
-            self.res_combo.configure(state="disabled")
-        else:
+        if self.output_format_var.get() == "MP4 Video":
             self.res_combo.configure(state="readonly")
+        else:
+            self.res_combo.configure(state="disabled")
 
     def _refresh_controls(self):
         preview_busy = self._preview_busy()
@@ -458,7 +458,12 @@ class DownloaderApp:
         )
 
         output_format = self.output_format_var.get()
-        quality = self.res_var.get() if output_format == "MP4 Video" else "Audio"
+        if output_format == "MP4 Video":
+            quality = self.res_var.get()
+        elif output_format == "MP3 Audio":
+            quality = "320 kbps"
+        else:
+            quality = "PCM"
 
         self.job_counter += 1
         job = {
@@ -562,6 +567,8 @@ class DownloaderApp:
         title = None
         info = job.get("info")
         is_wav = job["output_format"] == "WAV Audio"
+        is_mp3 = job["output_format"] == "MP3 Audio"
+        is_audio = is_wav or is_mp3
 
         try:
             if info is None:
@@ -577,8 +584,9 @@ class DownloaderApp:
                 title = safe_filename(info.get("title") or "media")
                 self.events.put(("job_title", job["id"], info.get("title") or title))
 
-            if is_wav:
-                self.events.put(("job_progress", job["id"], 0, "Downloading best available audio…"))
+            if is_audio:
+                audio_label = "MP3" if is_mp3 else "WAV"
+                self.events.put(("job_progress", job["id"], 0, f"Downloading best available audio for {audio_label}…"))
                 format_expression = "bestaudio/best"
             else:
                 self.events.put(("job_progress", job["id"], 0, "Downloading video and audio…"))
@@ -610,7 +618,7 @@ class DownloaderApp:
                 "after_move:KC_FILE|%(filepath)s",
             ]
 
-            if not is_wav:
+            if not is_audio:
                 cmd.extend(["--merge-output-format", "mkv"])
 
             cmd.append(job["url"])
@@ -638,7 +646,7 @@ class DownloaderApp:
                     speed = parts[2].strip() if len(parts) > 2 else ""
                     eta = parts[3].strip() if len(parts) > 3 else ""
                     overall = min(75.0, max(0.0, pct * 0.75))
-                    label = "Downloading audio" if is_wav else "Downloading"
+                    label = "Downloading audio" if is_audio else "Downloading"
                     message = f"{label}… {pct:.1f}%"
                     if speed and speed != "N/A":
                         message += f"  •  {speed}"
@@ -681,7 +689,12 @@ class DownloaderApp:
             if not title:
                 title = safe_filename(downloaded_path.stem)
 
-            extension = ".wav" if is_wav else ".mp4"
+            if is_mp3:
+                extension = ".mp3"
+            elif is_wav:
+                extension = ".wav"
+            else:
+                extension = ".mp4"
             output = job["output_dir"] / f"{title}{extension}"
             index = 2
             while output.exists():
@@ -690,7 +703,19 @@ class DownloaderApp:
 
             duration = info.get("duration") if info else None
 
-            if is_wav:
+            if is_mp3:
+                self.events.put(
+                    ("job_progress", job["id"], 75, "Converting to 320 kbps MP3 audio…")
+                )
+                self.events.put(("log", f"Converting MP3: {downloaded_path.name}"))
+                self._convert_to_mp3(
+                    downloaded_path,
+                    output,
+                    tools["ffmpeg"],
+                    duration,
+                    job["id"],
+                )
+            elif is_wav:
                 self.events.put(
                     ("job_progress", job["id"], 75, "Converting to uncompressed WAV audio…")
                 )
@@ -757,6 +782,31 @@ class DownloaderApp:
             str(output),
         ]
         self._run_ffmpeg_conversion(cmd, duration, job_id, "Converting MP4")
+
+    def _convert_to_mp3(self, source, output, ffmpeg, duration, job_id):
+        cmd = [
+            ffmpeg,
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-i",
+            str(source),
+            "-vn",
+            "-c:a",
+            "libmp3lame",
+            "-b:a",
+            "320k",
+            "-ar",
+            "48000",
+            "-ac",
+            "2",
+            "-progress",
+            "pipe:1",
+            "-nostats",
+            str(output),
+        ]
+        self._run_ffmpeg_conversion(cmd, duration, job_id, "Converting MP3")
 
     def _convert_to_wav(self, source, output, ffmpeg, duration, job_id):
         cmd = [
