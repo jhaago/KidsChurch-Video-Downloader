@@ -17,3 +17,11 @@ tools/ffmpeg
 tools/ffprobe
 tools/ffmpeg/
 tools/deno/
+
+# Android
+android/.gradle/
+android/**/build/
+android/local.properties
+android/.idea/
+*.apk
+*.aab
