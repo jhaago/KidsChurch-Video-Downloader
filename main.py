@@ -12,7 +12,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 
 APP_NAME = "YouTube Downloader"
-APP_VERSION = "0.6.1"
+APP_VERSION = "0.6.2"
 
 RESOLUTION_FORMATS = {
     "1080p": "bestvideo[height<=1080]+bestaudio/best[height<=1080]",
@@ -351,15 +351,9 @@ class DownloaderApp:
 
         ttk.Label(
             header_left,
-            text="MEDIA TOOL",
-            style="Accent.TLabel",
-        ).pack(anchor="w")
-
-        ttk.Label(
-            header_left,
             text=APP_NAME,
             style="Title.TLabel",
-        ).pack(anchor="w", pady=(1, 2))
+        ).pack(anchor="w", pady=(0, 2))
 
         ttk.Label(
             header_left,
@@ -1322,7 +1316,7 @@ class DownloaderApp:
         if title is not None:
             values[0] = title
         if status is not None:
-            values[3] = status
+            values[3] = "Downloading" if status == "Running" else status
 
         tags = (status,) if status is not None else self.queue_tree.item(iid, "tags")
         self.queue_tree.item(iid, values=values, tags=tags)
@@ -1355,7 +1349,7 @@ class DownloaderApp:
 
         parts = [f"{total} item" + ("" if total == 1 else "s")]
         if counts.get("Running"):
-            parts.append(f"{counts['Running']} running")
+            parts.append(f"{counts['Running']} downloading")
         if counts.get("Queued"):
             parts.append(f"{counts['Queued']} queued")
         if counts.get("Complete"):
