@@ -1,0 +1,71 @@
+name: Build macOS App
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-macos:
+    name: macOS ${{ matrix.label }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15-intel
+            label: Intel
+            expected_arch: x86_64
+          - runner: macos-15
+            label: AppleSilicon
+            expected_arch: arm64
+
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify runner architecture
+        shell: bash
+        run: |
+          echo "Runner architecture: $(uname -m)"
+          test "$(uname -m)" = "${{ matrix.expected_arch }}"
+
+      - name: Build macOS application
+        shell: bash
+        run: |
+          chmod +x build_macos.sh prepare_tools_macos.sh
+          ./build_macos.sh
+
+      - name: Verify packaged app
+        shell: bash
+        run: |
+          test -d "dist/YouTube Downloader.app"
+          codesign --verify --deep --strict "dist/YouTube Downloader.app"
+          test -f "macos_output/YouTubeDownloader-macOS-${{ matrix.label }}-v0.5.0.dmg"
+          test -f "macos_output/YouTubeDownloader-macOS-${{ matrix.label }}-v0.5.0.zip"
+
+      - name: Upload macOS build
+        uses: actions/upload-artifact@v4
+        with:
+          name: YouTubeDownloader-macOS-${{ matrix.label }}
+          path: |
+            macos_output/YouTubeDownloader-macOS-${{ matrix.label }}-v0.5.0.dmg
+            macos_output/YouTubeDownloader-macOS-${{ matrix.label }}-v0.5.0.zip
+          if-no-files-found: error
+          compression-level: 0
