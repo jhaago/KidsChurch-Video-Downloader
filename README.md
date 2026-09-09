@@ -1,6 +1,11 @@
-# YouTube Downloader V0.6.2
+# YouTube Downloader
 
-A simple desktop app for downloading **authorised** YouTube media as:
+Current builds:
+
+- **Windows / macOS desktop:** V0.6.2
+- **Android:** V0.1 proof-of-concept
+
+The desktop app downloads **authorised** YouTube media as:
 
 - **MP4 Video** — PowerPoint-friendly H.264/AAC video
 - **MP3 Audio** — 320 kbps stereo
@@ -43,9 +48,63 @@ The redesign is deliberately lightweight and does not add heavy UI frameworks or
 
 # How to install
 
-You do **not** need Python, FFmpeg, Deno, or yt-dlp installed on your computer when using the packaged builds. They are bundled with the app.
+You do **not** need Python, FFmpeg, Deno, yt-dlp, Android Studio, or other developer tools when using the packaged builds. Required download/conversion components are bundled into each platform build.
 
 The source-code files in the repository are not the installer. The easiest way to install the app is to download a finished build from **GitHub Actions**.
+
+## Android — V0.1 proof-of-concept
+
+The first Android build is intentionally limited to **MP3 downloads** while the Android engine is validated on a real phone.
+
+It currently supports:
+
+- paste a YouTube URL
+- receive a URL from **YouTube → Share → YouTube Downloader**
+- download the best available source audio
+- convert to **320 kbps MP3**
+- progress and ETA
+- cancellation
+- save the finished MP3 into **Downloads/YouTube Downloader**
+
+### Install the Android APK
+
+1. Open this repository on GitHub.
+2. Click **Actions**.
+3. In the left-hand list, click **Build Android APK**.
+4. Open the most recent run with a **green check mark**.
+5. Scroll to **Artifacts**.
+6. Download **YouTubeDownloader-Android-POC**.
+7. Extract the downloaded ZIP.
+8. Inside is:
+
+       app-debug.apk
+
+9. Open the APK on the Android phone.
+10. Android may ask you to allow your browser/files app to **Install unknown apps**. Allow it for that app if you are comfortable installing this private test build.
+11. Confirm the installation.
+12. Open **YouTube Downloader**.
+
+You do **not** need to disable Android security globally.
+
+### First Android test
+
+Use a short video you are authorised to download.
+
+Either paste its URL into the app, or from the YouTube app use:
+
+**Share → YouTube Downloader**
+
+Then tap:
+
+**Download MP3 • 320 kbps**
+
+After completion, look in:
+
+**Downloads → YouTube Downloader**
+
+This V0.1 Android build is a proof-of-concept. MP4, WAV, preview metadata, queues and background downloading come after the MP3 engine has been proven on a real device.
+
+---
 
 ## Windows
 
@@ -224,6 +283,12 @@ Automated GitHub Actions builds currently produce:
 
 The Mac workflow builds and verifies Intel and Apple Silicon packages separately.
 
+### Android
+
+- **YouTubeDownloader-Android-POC**
+
+The Android artifact currently contains a debug APK for private testing. V0.1 is MP3-only while the on-device yt-dlp / QuickJS / FFmpeg path is being validated.
+
 ---
 
 # If a build fails
@@ -287,6 +352,16 @@ The script downloads yt-dlp, Deno, FFmpeg and ffprobe and builds the application
 To create the installer, install Inno Setup 6 and run:
 
     make_installer.bat
+
+## Android development build
+
+The Android source is in:
+
+    android/
+
+It is a native Kotlin / Jetpack Compose app. GitHub Actions builds the APK automatically, so Android Studio is not required just to install/test the app.
+
+For local development, open the `android` folder as an Android Studio project.
 
 ## macOS development build
 
