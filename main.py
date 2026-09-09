@@ -12,7 +12,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 
 APP_NAME = "Kids Church Video Downloader"
-APP_VERSION = "0.2.0"
+APP_VERSION = "0.3.0"
 
 RESOLUTION_FORMATS = {
     "1080p": "bestvideo[height<=1080]+bestaudio/best[height<=1080]",
@@ -21,6 +21,7 @@ RESOLUTION_FORMATS = {
 }
 
 MEDIA_EXTENSIONS = {".mkv", ".mp4", ".webm", ".mov", ".m4v"}
+FINISHED_STATES = {"Complete", "Failed", "Cancelled"}
 
 
 def app_dir() -> Path:
@@ -49,10 +50,18 @@ def safe_filename(name: str) -> str:
 
 def find_tool(name: str):
     suffix = ".exe" if os.name == "nt" else ""
-    local = app_dir() / f"{name}{suffix}"
-    if local.exists():
-        return str(local)
+    filename = f"{name}{suffix}"
+    for candidate in (app_dir() / filename, app_dir() / "tools" / filename):
+        if candidate.exists():
+            return str(candidate)
     return shutil.which(name)
+
+
+def tool_environment():
+    env = os.environ.copy()
+    extra = [str(app_dir()), str(app_dir() / "tools")]
+    env["PATH"] = os.pathsep.join(extra + [env.get("PATH", "")])
+    return env
 
 
 def no_window_flags():
@@ -71,17 +80,29 @@ def duration_text(seconds):
     return f"{minutes}:{secs:02d}"
 
 
+def short_url(url):
+    clean = url.strip()
+    return clean if len(clean) <= 72 else clean[:69] + "..."
+
+
 class DownloaderApp:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title(f"{APP_NAME} v{APP_VERSION}")
-        self.root.geometry("840x680")
-        self.root.minsize(760, 620)
+        self.root.geometry("920x780")
+        self.root.minsize(820, 700)
 
         self.events = queue.Queue()
-        self.worker = None
+        self.preview_worker = None
+        self.queue_worker = None
         self.active_process = None
-        self.cancel_requested = False
+        self.operation_cancel_requested = False
+
+        self.jobs = []
+        self.jobs_lock = threading.Lock()
+        self.job_counter = 0
+        self.current_job_id = None
+
         self.preview_info = None
         self.preview_url = None
 
@@ -102,6 +123,7 @@ class DownloaderApp:
 
         self._build_ui()
         self._refresh_tool_status()
+        self._refresh_controls()
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
         self.root.after(100, self._process_events)
 
@@ -133,34 +155,39 @@ class DownloaderApp:
 
         ttk.Label(
             outer,
-            text="Paste a video link, preview it, then create a PowerPoint-friendly MP4.",
-            wraplength=790,
-        ).pack(anchor="w", pady=(4, 18))
+            text=(
+                "Paste links and add them to the queue. Downloads run automatically one-by-one "
+                "and are converted to PowerPoint-friendly MP4 files."
+            ),
+            wraplength=870,
+        ).pack(anchor="w", pady=(4, 16))
 
         url_frame = ttk.Frame(outer)
         url_frame.pack(fill="x")
-        ttk.Label(url_frame, text="Video URL").grid(row=0, column=0, columnspan=2, sticky="w")
+        ttk.Label(url_frame, text="Video URL").grid(row=0, column=0, columnspan=3, sticky="w")
         self.url_entry = ttk.Entry(url_frame, textvariable=self.url_var)
         self.url_entry.grid(row=1, column=0, sticky="ew", pady=(4, 10))
         self.preview_btn = ttk.Button(url_frame, text="Preview", command=self._start_preview)
         self.preview_btn.grid(row=1, column=1, padx=(8, 0), pady=(4, 10))
+        self.add_queue_btn = ttk.Button(url_frame, text="Add to Queue", command=self._queue_current_url)
+        self.add_queue_btn.grid(row=1, column=2, padx=(8, 0), pady=(4, 10))
         url_frame.columnconfigure(0, weight=1)
         self.url_entry.focus_set()
-        self.url_entry.bind("<Return>", lambda _event: self._start_preview())
+        self.url_entry.bind("<Return>", lambda _event: self._queue_current_url())
 
         preview = ttk.LabelFrame(outer, text="Video preview")
-        preview.pack(fill="x", pady=(0, 14))
+        preview.pack(fill="x", pady=(0, 12))
         ttk.Label(
             preview,
             textvariable=self.preview_title_var,
             font=("Segoe UI", 11, "bold"),
-            wraplength=760,
-        ).pack(anchor="w", padx=10, pady=(8, 2))
+            wraplength=840,
+        ).pack(anchor="w", padx=10, pady=(7, 2))
         ttk.Label(
             preview,
             textvariable=self.preview_detail_var,
-            wraplength=760,
-        ).pack(anchor="w", padx=10, pady=(0, 8))
+            wraplength=840,
+        ).pack(anchor="w", padx=10, pady=(0, 7))
 
         options = ttk.Frame(outer)
         options.pack(fill="x")
@@ -175,50 +202,74 @@ class DownloaderApp:
             state="readonly",
             width=12,
         )
-        self.res_combo.grid(row=1, column=0, sticky="w", pady=(4, 12))
+        self.res_combo.grid(row=1, column=0, sticky="w", pady=(4, 10))
 
         folder_row = ttk.Frame(options)
-        folder_row.grid(row=1, column=1, sticky="ew", padx=(18, 0), pady=(4, 12))
+        folder_row.grid(row=1, column=1, sticky="ew", padx=(18, 0), pady=(4, 10))
         ttk.Entry(folder_row, textvariable=self.folder_var).pack(side="left", fill="x", expand=True)
         ttk.Button(folder_row, text="Browse…", command=self._browse).pack(side="left", padx=(8, 0))
         options.columnconfigure(1, weight=1)
 
-        legal = ttk.LabelFrame(outer, text="Use")
-        legal.pack(fill="x", pady=(0, 14))
-        ttk.Label(
-            legal,
-            text=(
-                "Use this app only for videos you own or are authorised to download. "
-                "The app does not attempt to bypass DRM or protected streaming restrictions."
-            ),
-            wraplength=780,
-        ).pack(anchor="w", padx=10, pady=8)
+        queue_frame = ttk.LabelFrame(outer, text="Download queue")
+        queue_frame.pack(fill="both", expand=True, pady=(2, 12))
 
-        buttons = ttk.Frame(outer)
-        buttons.pack(fill="x")
-        self.download_btn = ttk.Button(buttons, text="Download PowerPoint MP4", command=self._start_download)
-        self.download_btn.pack(side="left")
-        self.cancel_btn = ttk.Button(buttons, text="Cancel", command=self._cancel, state="disabled")
-        self.cancel_btn.pack(side="left", padx=(8, 0))
-        ttk.Button(buttons, text="Open Save Folder", command=self._open_folder).pack(side="right")
+        queue_table = ttk.Frame(queue_frame)
+        queue_table.pack(fill="both", expand=True, padx=8, pady=(8, 4))
+
+        self.queue_tree = ttk.Treeview(
+            queue_table,
+            columns=("title", "resolution", "status"),
+            show="headings",
+            height=7,
+            selectmode="extended",
+        )
+        self.queue_tree.heading("title", text="Video")
+        self.queue_tree.heading("resolution", text="Quality")
+        self.queue_tree.heading("status", text="Status")
+        self.queue_tree.column("title", width=560, minwidth=260, stretch=True)
+        self.queue_tree.column("resolution", width=90, minwidth=75, stretch=False, anchor="center")
+        self.queue_tree.column("status", width=130, minwidth=105, stretch=False, anchor="center")
+
+        scrollbar = ttk.Scrollbar(queue_table, orient="vertical", command=self.queue_tree.yview)
+        self.queue_tree.configure(yscrollcommand=scrollbar.set)
+        self.queue_tree.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        queue_buttons = ttk.Frame(queue_frame)
+        queue_buttons.pack(fill="x", padx=8, pady=(0, 8))
+        self.cancel_btn = ttk.Button(queue_buttons, text="Cancel Current", command=self._cancel_current)
+        self.cancel_btn.pack(side="left")
+        ttk.Button(queue_buttons, text="Remove Selected", command=self._remove_selected).pack(side="left", padx=(8, 0))
+        ttk.Button(queue_buttons, text="Clear Finished", command=self._clear_finished).pack(side="left", padx=(8, 0))
+        ttk.Button(queue_buttons, text="Open Save Folder", command=self._open_folder).pack(side="right")
 
         ttk.Progressbar(
             outer,
             variable=self.progress_var,
             maximum=100,
-        ).pack(fill="x", pady=(18, 6))
+        ).pack(fill="x", pady=(2, 5))
         ttk.Label(outer, textvariable=self.status_var).pack(anchor="w")
 
-        log_frame = ttk.LabelFrame(outer, text="Activity")
-        log_frame.pack(fill="both", expand=True, pady=(14, 0))
-        self.log = tk.Text(log_frame, height=9, wrap="word", state="disabled")
+        activity = ttk.LabelFrame(outer, text="Activity")
+        activity.pack(fill="both", expand=True, pady=(10, 0))
+        self.log = tk.Text(activity, height=7, wrap="word", state="disabled")
         self.log.pack(fill="both", expand=True, padx=8, pady=8)
+
+        legal = ttk.Label(
+            outer,
+            text=(
+                "Use only for videos you own or are authorised to download. "
+                "The app does not attempt to bypass DRM or protected streaming restrictions."
+            ),
+            wraplength=870,
+        )
+        legal.pack(anchor="w", pady=(8, 0))
 
         ttk.Label(
             outer,
             textvariable=self.tools_var,
             font=("Segoe UI", 9),
-        ).pack(anchor="w", pady=(10, 0))
+        ).pack(anchor="w", pady=(5, 0))
 
     def _refresh_tool_status(self):
         states = []
@@ -242,6 +293,22 @@ class DownloaderApp:
             )
             return None
         return tools
+
+    def _preview_busy(self):
+        return bool(self.preview_worker and self.preview_worker.is_alive())
+
+    def _queue_busy(self):
+        return bool(self.queue_worker and self.queue_worker.is_alive())
+
+    def _refresh_controls(self):
+        preview_busy = self._preview_busy()
+        queue_busy = self._queue_busy()
+
+        self.preview_btn.configure(state="disabled" if preview_busy or queue_busy else "normal")
+        self.add_queue_btn.configure(state="disabled" if preview_busy else "normal")
+        self.cancel_btn.configure(
+            state="normal" if preview_busy or self.current_job_id is not None else "disabled"
+        )
 
     def _browse(self):
         folder = filedialog.askdirectory(initialdir=self.folder_var.get() or str(Path.home()))
@@ -268,16 +335,8 @@ class DownloaderApp:
         self.log.see("end")
         self.log.configure(state="disabled")
 
-    def _set_busy(self, busy: bool, preview=False):
-        self.download_btn.configure(state="disabled" if busy else "normal")
-        self.preview_btn.configure(state="disabled" if busy else "normal")
-        self.res_combo.configure(state="disabled" if busy else "readonly")
-        self.cancel_btn.configure(state="normal" if busy else "disabled")
-        if busy and preview:
-            self.status_var.set("Loading video information…")
-
     def _start_preview(self):
-        if self.worker and self.worker.is_alive():
+        if self._preview_busy() or self._queue_busy():
             return
 
         url = self.url_var.get().strip()
@@ -289,28 +348,30 @@ class DownloaderApp:
         if not tools:
             return
 
-        self.cancel_requested = False
+        self.operation_cancel_requested = False
         self.progress_var.set(0)
         self.preview_title_var.set("Loading preview…")
         self.preview_detail_var.set("")
-        self._set_busy(True, preview=True)
-        self.worker = threading.Thread(
+        self.status_var.set("Loading video information…")
+
+        self.preview_worker = threading.Thread(
             target=self._preview_worker,
-            args=(url, tools["yt-dlp"]),
+            args=(url, tools),
             daemon=True,
         )
-        self.worker.start()
+        self.preview_worker.start()
+        self._refresh_controls()
 
-    def _preview_worker(self, url, yt_dlp):
+    def _preview_worker(self, url, tools):
         try:
-            info = self._fetch_metadata(url, yt_dlp)
+            info = self._fetch_metadata(url, tools)
             self.events.put(("preview", url, info))
         except Exception as exc:
-            self.events.put(("error", str(exc)))
+            self.events.put(("preview_error", str(exc)))
 
-    def _fetch_metadata(self, url, yt_dlp):
+    def _fetch_metadata(self, url, tools):
         cmd = [
-            yt_dlp,
+            tools["yt-dlp"],
             "--no-playlist",
             "--skip-download",
             "--dump-single-json",
@@ -321,7 +382,7 @@ class DownloaderApp:
         stdout, stderr = proc.communicate()
         self.active_process = None
 
-        if self.cancel_requested:
+        if self.operation_cancel_requested:
             raise RuntimeError("Operation cancelled by user.")
         if proc.returncode != 0:
             detail = (stderr or stdout or "").strip()
@@ -332,8 +393,8 @@ class DownloaderApp:
         except json.JSONDecodeError as exc:
             raise RuntimeError("The video information returned by yt-dlp could not be read.") from exc
 
-    def _start_download(self):
-        if self.worker and self.worker.is_alive():
+    def _queue_current_url(self):
+        if self._preview_busy():
             return
 
         url = self.url_var.get().strip()
@@ -353,39 +414,134 @@ class DownloaderApp:
             return
 
         self._save_settings()
-        self.cancel_requested = False
-        self.progress_var.set(0)
-        self.status_var.set("Starting download…")
-        self._append_log(f"Starting: {url}")
-        self._set_busy(True)
-
         cached_info = self.preview_info if self.preview_url == url else None
-        self.worker = threading.Thread(
-            target=self._download_worker,
-            args=(url, output_dir, self.res_var.get(), tools, cached_info),
+        display_title = (
+            cached_info.get("title")
+            if cached_info and cached_info.get("title")
+            else short_url(url)
+        )
+
+        self.job_counter += 1
+        job = {
+            "id": self.job_counter,
+            "url": url,
+            "resolution": self.res_var.get(),
+            "output_dir": output_dir,
+            "title": display_title,
+            "status": "Queued",
+            "info": cached_info,
+        }
+
+        with self.jobs_lock:
+            self.jobs.append(job)
+
+        self.queue_tree.insert(
+            "",
+            "end",
+            iid=str(job["id"]),
+            values=(job["title"], job["resolution"], job["status"]),
+        )
+
+        self._append_log(f"Queued: {display_title}")
+        self.url_var.set("")
+        self.preview_info = None
+        self.preview_url = None
+        self.preview_title_var.set("No video preview loaded.")
+        self.preview_detail_var.set("")
+        self.url_entry.focus_set()
+
+        self._ensure_queue_worker(tools)
+        self._refresh_controls()
+
+    def _ensure_queue_worker(self, tools=None):
+        if self._queue_busy():
+            return
+
+        with self.jobs_lock:
+            has_queued = any(job["status"] == "Queued" for job in self.jobs)
+
+        if not has_queued:
+            return
+
+        tools = tools or self._required_tools()
+        if not tools:
+            return
+
+        self.queue_worker = threading.Thread(
+            target=self._queue_runner,
+            args=(tools,),
             daemon=True,
         )
-        self.worker.start()
+        self.queue_worker.start()
+        self._refresh_controls()
 
-    def _download_worker(self, url, output_dir, resolution, tools, cached_info):
+    def _claim_next_job(self):
+        with self.jobs_lock:
+            for job in self.jobs:
+                if job["status"] == "Queued":
+                    job["status"] = "Running"
+                    return job
+        return None
+
+    def _set_job_status(self, job_id, status):
+        with self.jobs_lock:
+            for job in self.jobs:
+                if job["id"] == job_id:
+                    job["status"] = status
+                    break
+
+    def _queue_runner(self, tools):
+        while True:
+            job = self._claim_next_job()
+            if job is None:
+                break
+
+            self.current_job_id = job["id"]
+            self.operation_cancel_requested = False
+            self.events.put(("job_status", job["id"], "Running"))
+            self.events.put(("log", f"Starting: {job['url']}"))
+
+            try:
+                output = self._download_job(job, tools)
+                self._set_job_status(job["id"], "Complete")
+                self.events.put(("job_done", job["id"], output))
+            except Exception as exc:
+                cancelled = self.operation_cancel_requested or "cancelled" in str(exc).lower()
+                state = "Cancelled" if cancelled else "Failed"
+                self._set_job_status(job["id"], state)
+                self.events.put(("job_error", job["id"], state, str(exc)))
+            finally:
+                self.active_process = None
+                self.current_job_id = None
+                self.operation_cancel_requested = False
+
+        self.events.put(("queue_idle",))
+
+    def _download_job(self, job, tools):
         temp_dir = Path(tempfile.mkdtemp(prefix="kc_video_"))
         title = None
-        info = cached_info
+        info = job.get("info")
 
         try:
             if info is None:
                 try:
-                    info = self._fetch_metadata(url, tools["yt-dlp"])
-                    self.events.put(("preview", url, info))
+                    info = self._fetch_metadata(job["url"], tools)
+                    self.events.put(("job_metadata", job["id"], info))
                 except Exception as exc:
+                    if self.operation_cancel_requested:
+                        raise
                     self.events.put(("log", f"Preview information unavailable: {exc}"))
 
             if info:
                 title = safe_filename(info.get("title") or "video")
+                self.events.put(("job_title", job["id"], info.get("title") or title))
 
-            self.events.put(("status", "Downloading video and audio…"))
+            self.events.put(("job_progress", job["id"], 0, "Downloading video and audio…"))
 
-            progress_template = "download:KC_PROGRESS|%(progress._percent_str)s|%(progress._speed_str)s|%(progress._eta_str)s"
+            progress_template = (
+                "download:KC_PROGRESS|%(progress._percent_str)s|"
+                "%(progress._speed_str)s|%(progress._eta_str)s"
+            )
             cmd = [
                 tools["yt-dlp"],
                 "--no-playlist",
@@ -397,7 +553,7 @@ class DownloaderApp:
                 "--ffmpeg-location",
                 str(Path(tools["ffmpeg"]).parent),
                 "--format",
-                RESOLUTION_FORMATS.get(resolution, RESOLUTION_FORMATS["1080p"]),
+                RESOLUTION_FORMATS.get(job["resolution"], RESOLUTION_FORMATS["1080p"]),
                 "--merge-output-format",
                 "mkv",
                 "--output",
@@ -406,14 +562,14 @@ class DownloaderApp:
                 "before_dl:KC_TITLE|%(title)s",
                 "--print",
                 "after_move:KC_FILE|%(filepath)s",
-                url,
+                job["url"],
             ]
 
             proc = self._start_process(cmd, capture_stderr=False)
             downloaded_path = None
 
             for raw_line in proc.stdout:
-                if self.cancel_requested:
+                if self.operation_cancel_requested:
                     self._terminate_active_process()
                     raise RuntimeError("Operation cancelled by user.")
 
@@ -437,9 +593,11 @@ class DownloaderApp:
                         message += f"  •  {speed}"
                     if eta and eta != "N/A":
                         message += f"  •  ETA {eta}"
-                    self.events.put(("progress", overall, message))
+                    self.events.put(("job_progress", job["id"], overall, message))
                 elif line.startswith("KC_TITLE|"):
-                    title = safe_filename(line.split("|", 1)[1])
+                    raw_title = line.split("|", 1)[1]
+                    title = safe_filename(raw_title)
+                    self.events.put(("job_title", job["id"], raw_title))
                 elif line.startswith("KC_FILE|"):
                     downloaded_path = Path(line.split("|", 1)[1])
                 else:
@@ -448,9 +606,13 @@ class DownloaderApp:
             returncode = proc.wait()
             self.active_process = None
             if returncode != 0:
-                raise RuntimeError("yt-dlp could not complete the download. See the activity log for details.")
+                if self.operation_cancel_requested:
+                    raise RuntimeError("Operation cancelled by user.")
+                raise RuntimeError(
+                    "yt-dlp could not complete the download. See the activity log for details."
+                )
 
-            if self.cancel_requested:
+            if self.operation_cancel_requested:
                 raise RuntimeError("Operation cancelled by user.")
 
             if not downloaded_path or not downloaded_path.exists():
@@ -460,32 +622,43 @@ class DownloaderApp:
                     if p.is_file() and p.suffix.lower() in MEDIA_EXTENSIONS
                 ]
                 if not candidates:
-                    raise RuntimeError("The download finished, but the video file could not be located.")
+                    raise RuntimeError(
+                        "The download finished, but the video file could not be located."
+                    )
                 downloaded_path = max(candidates, key=lambda p: p.stat().st_size)
 
             if not title:
                 title = safe_filename(downloaded_path.stem)
 
-            output = output_dir / f"{title}.mp4"
+            output = job["output_dir"] / f"{title}.mp4"
             index = 2
             while output.exists():
-                output = output_dir / f"{title} ({index}).mp4"
+                output = job["output_dir"] / f"{title} ({index}).mp4"
                 index += 1
 
             duration = info.get("duration") if info else None
-            self.events.put(("status", "Converting to PowerPoint-friendly H.264/AAC MP4…"))
+            self.events.put(
+                (
+                    "job_progress",
+                    job["id"],
+                    75,
+                    "Converting to PowerPoint-friendly H.264/AAC MP4…",
+                )
+            )
             self.events.put(("log", f"Converting: {downloaded_path.name}"))
-            self._convert_with_ffmpeg(downloaded_path, output, tools["ffmpeg"], duration)
+            self._convert_with_ffmpeg(
+                downloaded_path,
+                output,
+                tools["ffmpeg"],
+                duration,
+                job["id"],
+            )
 
-            self.events.put(("progress", 100, "Complete"))
-            self.events.put(("done", str(output)))
-        except Exception as exc:
-            self.events.put(("error", str(exc)))
+            return str(output)
         finally:
-            self.active_process = None
             shutil.rmtree(temp_dir, ignore_errors=True)
 
-    def _convert_with_ffmpeg(self, source, output, ffmpeg, duration):
+    def _convert_with_ffmpeg(self, source, output, ffmpeg, duration, job_id):
         cmd = [
             ffmpeg,
             "-hide_banner",
@@ -521,7 +694,7 @@ class DownloaderApp:
         proc = self._start_process(cmd, capture_stderr=True)
 
         while True:
-            if self.cancel_requested:
+            if self.operation_cancel_requested:
                 self._terminate_active_process()
                 raise RuntimeError("Operation cancelled by user.")
 
@@ -537,13 +710,17 @@ class DownloaderApp:
                     seconds = int(line.split("=", 1)[1]) / 1_000_000
                     pct = min(100.0, seconds / float(duration) * 100)
                     overall = 75.0 + pct * 0.25
-                    self.events.put(("progress", overall, f"Converting MP4… {pct:.1f}%"))
+                    self.events.put(
+                        ("job_progress", job_id, overall, f"Converting MP4… {pct:.1f}%")
+                    )
                 except (ValueError, ZeroDivisionError):
                     pass
 
         _, stderr = proc.communicate()
         self.active_process = None
         if proc.returncode != 0:
+            if self.operation_cancel_requested:
+                raise RuntimeError("Operation cancelled by user.")
             detail = (stderr or "").strip()
             raise RuntimeError(f"FFmpeg conversion failed.\n{detail}".strip())
 
@@ -560,6 +737,7 @@ class DownloaderApp:
             encoding="utf-8",
             errors="replace",
             creationflags=creationflags,
+            env=tool_environment(),
         )
         self.active_process = proc
         return proc
@@ -586,11 +764,90 @@ class DownloaderApp:
             except Exception:
                 pass
 
-    def _cancel(self):
-        self.cancel_requested = True
-        self.status_var.set("Cancelling…")
-        self._append_log("Cancel requested.")
+    def _cancel_current(self):
+        if self._preview_busy():
+            self.operation_cancel_requested = True
+            self.status_var.set("Cancelling preview…")
+            self._terminate_active_process()
+            return
+
+        if self.current_job_id is None:
+            return
+
+        self.operation_cancel_requested = True
+        self.status_var.set("Cancelling current download…")
+        self._append_log("Cancel requested for current download.")
         self._terminate_active_process()
+
+    def _find_job(self, job_id):
+        with self.jobs_lock:
+            for job in self.jobs:
+                if job["id"] == job_id:
+                    return job
+        return None
+
+    def _remove_selected(self):
+        selections = list(self.queue_tree.selection())
+        if not selections:
+            return
+
+        blocked = False
+        remove_ids = []
+
+        with self.jobs_lock:
+            for iid in selections:
+                job_id = int(iid)
+                job = next((item for item in self.jobs if item["id"] == job_id), None)
+                if not job:
+                    continue
+                if job["status"] == "Running":
+                    blocked = True
+                    continue
+                remove_ids.append(job_id)
+
+            if remove_ids:
+                self.jobs = [job for job in self.jobs if job["id"] not in remove_ids]
+
+        for job_id in remove_ids:
+            iid = str(job_id)
+            if self.queue_tree.exists(iid):
+                self.queue_tree.delete(iid)
+
+        if blocked:
+            messagebox.showinfo(
+                "Download in progress",
+                "The currently running item cannot be removed. Use Cancel Current first.",
+            )
+
+    def _clear_finished(self):
+        with self.jobs_lock:
+            remove_ids = [
+                job["id"] for job in self.jobs if job["status"] in FINISHED_STATES
+            ]
+            self.jobs = [
+                job for job in self.jobs if job["status"] not in FINISHED_STATES
+            ]
+
+        for job_id in remove_ids:
+            iid = str(job_id)
+            if self.queue_tree.exists(iid):
+                self.queue_tree.delete(iid)
+
+    def _update_tree(self, job_id, title=None, status=None):
+        iid = str(job_id)
+        if not self.queue_tree.exists(iid):
+            return
+
+        values = list(self.queue_tree.item(iid, "values"))
+        while len(values) < 3:
+            values.append("")
+
+        if title is not None:
+            values[0] = title
+        if status is not None:
+            values[2] = status
+
+        self.queue_tree.item(iid, values=values)
 
     def _display_preview(self, url, info):
         self.preview_info = info
@@ -604,60 +861,114 @@ class DownloaderApp:
         self.preview_title_var.set(title)
         self.preview_detail_var.set(f"{uploader}  •  {duration}  •  {extractor}")
 
+    def _queue_summary(self):
+        with self.jobs_lock:
+            counts = {}
+            for job in self.jobs:
+                counts[job["status"]] = counts.get(job["status"], 0) + 1
+        return counts
+
     def _process_events(self):
         try:
             while True:
                 event = self.events.get_nowait()
                 kind = event[0]
 
-                if kind == "progress":
-                    _, pct, message = event
-                    self.progress_var.set(max(0, min(100, pct)))
-                    self.status_var.set(message)
-
-                elif kind == "status":
-                    self.status_var.set(event[1])
-
-                elif kind == "log":
+                if kind == "log":
                     self._append_log(event[1])
 
                 elif kind == "preview":
                     _, url, info = event
                     self._display_preview(url, info)
+                    self.progress_var.set(0)
+                    self.status_var.set("Preview ready")
 
-                elif kind == "done":
-                    output = event[1]
-                    self.status_var.set("Finished")
-                    self._append_log(f"Saved: {output}")
-                    self._set_busy(False)
-                    messagebox.showinfo("Finished", f"Video saved as:\n{output}")
-
-                elif kind == "error":
+                elif kind == "preview_error":
                     message = event[1]
                     cancelled = "cancelled" in message.lower()
-                    self.status_var.set("Cancelled" if cancelled else "Failed")
-                    self._append_log(message)
-                    self._set_busy(False)
+                    self.status_var.set("Cancelled" if cancelled else "Preview failed")
                     if not cancelled:
-                        messagebox.showerror("Operation failed", message)
+                        self._append_log(message)
+                        messagebox.showerror("Preview failed", message)
+
+                elif kind == "job_metadata":
+                    _, job_id, info = event
+                    job = self._find_job(job_id)
+                    if job:
+                        job["info"] = info
+
+                elif kind == "job_title":
+                    _, job_id, title = event
+                    job = self._find_job(job_id)
+                    if job:
+                        job["title"] = title
+                    self._update_tree(job_id, title=title)
+
+                elif kind == "job_status":
+                    _, job_id, state = event
+                    self._update_tree(job_id, status=state)
+                    self.progress_var.set(0)
+                    self.status_var.set("Starting next queued download…")
+                    self._refresh_controls()
+
+                elif kind == "job_progress":
+                    _, job_id, pct, message = event
+                    if job_id == self.current_job_id:
+                        self.progress_var.set(max(0, min(100, pct)))
+                        self.status_var.set(message)
+
+                elif kind == "job_done":
+                    _, job_id, output = event
+                    self._update_tree(job_id, status="Complete")
+                    self.progress_var.set(100)
+                    self.status_var.set("Saved: " + Path(output).name)
+                    self._append_log(f"Saved: {output}")
+
+                elif kind == "job_error":
+                    _, job_id, state, message = event
+                    self._update_tree(job_id, status=state)
+                    self.status_var.set(state)
+                    if state == "Failed":
+                        self._append_log(f"Failed: {message}")
+                    else:
+                        self._append_log("Current download cancelled.")
+
+                elif kind == "queue_idle":
+                    counts = self._queue_summary()
+                    complete = counts.get("Complete", 0)
+                    failed = counts.get("Failed", 0)
+                    cancelled = counts.get("Cancelled", 0)
+                    pending = counts.get("Queued", 0)
+
+                    if pending:
+                        self.root.after(150, self._ensure_queue_worker)
+                    else:
+                        parts = [f"{complete} complete"]
+                        if failed:
+                            parts.append(f"{failed} failed")
+                        if cancelled:
+                            parts.append(f"{cancelled} cancelled")
+                        self.status_var.set("Queue finished — " + ", ".join(parts))
+                        if complete or failed or cancelled:
+                            self._append_log("Queue finished — " + ", ".join(parts))
+                    self._refresh_controls()
 
         except queue.Empty:
             pass
 
-        if self.worker and not self.worker.is_alive():
-            if str(self.download_btn["state"]) == "disabled":
-                self._set_busy(False)
-            if self.status_var.get() == "Loading video information…":
-                self.status_var.set("Ready")
-
+        self._refresh_controls()
         self.root.after(100, self._process_events)
 
     def _on_close(self):
         self._save_settings()
-        if self.worker and self.worker.is_alive():
-            if not messagebox.askyesno("Exit", "A download is still running. Cancel it and exit?"):
+        active = self._preview_busy() or self._queue_busy()
+        if active:
+            if not messagebox.askyesno(
+                "Exit",
+                "Downloads are still running. Cancel the current work and exit?",
+            ):
                 return
-            self.cancel_requested = True
+            self.operation_cancel_requested = True
             self._terminate_active_process()
         self.root.destroy()
 
