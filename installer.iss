@@ -1,5 +1,5 @@
 #define MyAppName "Kids Church Video Downloader"
-#define MyAppVersion "0.2.0"
+#define MyAppVersion "0.3.0"
 #define MyAppPublisher "Kids Church"
 #define MyAppExeName "KidsChurchVideoDownloader.exe"
 
@@ -12,7 +12,7 @@ DefaultDirName={autopf}\Kids Church Video Downloader
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 OutputDir=installer_output
-OutputBaseFilename=KidsChurchVideoDownloader_Setup_v0.2.0
+OutputBaseFilename=KidsChurchVideoDownloader_Setup_v0.3.0
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
