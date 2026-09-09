@@ -1,4 +1,4 @@
-# YouTube Downloader V0.6
+# YouTube Downloader V0.6.1
 
 A simple desktop app for downloading **authorised** YouTube media as:
 
@@ -7,6 +7,16 @@ A simple desktop app for downloading **authorised** YouTube media as:
 - **WAV Audio** — uncompressed 16-bit PCM stereo
 
 It supports a download queue, so you can add several videos/audio tracks and let them process automatically.
+
+## New in V0.6.1 — quality display fix
+
+The **Quality** control now changes with the selected output format:
+
+- MP4 shows the selectable video resolution: 1080p / 720p / 480p
+- MP3 shows **320 kbps • 48 kHz stereo**
+- WAV shows **16-bit PCM • 48 kHz stereo**
+
+Switching back to MP4 restores the previously selected video resolution.
 
 ## New in V0.6 — visual refresh
 
@@ -42,7 +52,7 @@ The source-code files in the repository are not the installer. The easiest way t
 7. Windows will download a ZIP file. Extract/unzip it.
 8. Inside, run:
 
-       YouTubeDownloader_Setup_v0.6.0.exe
+       YouTubeDownloader_Setup_v0.6.1.exe
 
 9. Follow the installer normally.
 10. Launch **YouTube Downloader** from the Start menu or desktop shortcut.
