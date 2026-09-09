@@ -3,7 +3,7 @@ setlocal
 cd /d "%~dp0"
 
 echo ============================================
-echo YouTube Downloader V0.6.1 - Windows Build
+echo YouTube Downloader V0.6.2 - Windows Build
 echo ============================================
 echo.
 
