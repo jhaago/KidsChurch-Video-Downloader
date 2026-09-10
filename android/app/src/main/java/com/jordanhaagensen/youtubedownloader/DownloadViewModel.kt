@@ -28,6 +28,7 @@ data class DownloadUiState(
     val etaSeconds: Long? = null,
     val isDownloading: Boolean = false,
     val savedFileName: String? = null,
+    val engineVersion: String? = null,
     val error: String? = null
 )
 
@@ -46,6 +47,7 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
 
     private var job: Job? = null
     private var processId: String? = null
+    private var engineCheckedThisLaunch = false
 
     fun setUrl(value: String) {
         _state.value = _state.value.copy(url = value, error = null)
@@ -92,6 +94,23 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
             val sessionDir = File(context.cacheDir, "downloads/$id").apply { mkdirs() }
 
             try {
+                _state.value = _state.value.copy(
+                    status = "Checking yt-dlp for updates…",
+                    progress = 0f
+                )
+
+                ensureCurrentYoutubeDL(context)
+
+                val currentVersion = YoutubeDL.getInstance().version(context)
+                _state.value = _state.value.copy(
+                    engineVersion = currentVersion,
+                    status = if (currentVersion.isNullOrBlank()) {
+                        "Preparing download…"
+                    } else {
+                        "yt-dlp $currentVersion • Preparing download…"
+                    }
+                )
+
                 val request = YoutubeDLRequest(url).apply {
                     addOption("--no-playlist")
                     addOption("--no-mtime")
@@ -153,6 +172,30 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
                 processId = null
                 sessionDir.deleteRecursively()
             }
+        }
+    }
+
+    private fun ensureCurrentYoutubeDL(context: Context) {
+        if (engineCheckedThisLaunch) return
+
+        try {
+            YoutubeDL.getInstance().updateYoutubeDL(
+                context,
+                YoutubeDL.UpdateChannel.STABLE
+            )
+            engineCheckedThisLaunch = true
+        } catch (t: Throwable) {
+            val installedVersion = YoutubeDL.getInstance().version(context)
+            val suffix = if (installedVersion.isNullOrBlank()) {
+                ""
+            } else {
+                " Installed version: $installedVersion."
+            }
+            throw IllegalStateException(
+                "Could not update yt-dlp before downloading.$suffix " +
+                    "Check your internet connection and try again.",
+                t
+            )
         }
     }
 
