@@ -196,7 +196,7 @@ private fun DownloaderScreen(
         ) {
             Column {
                 Text(
-                    text = "ANDROID • V0.2.1",
+                    text = "ANDROID • V0.2.2",
                     color = accent,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
