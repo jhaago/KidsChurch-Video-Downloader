@@ -6,6 +6,7 @@ import android.content.Context
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.yausername.youtubedl_android.YoutubeDL
@@ -41,8 +42,16 @@ data class DownloadUiState(
     val etaSeconds: Long? = null,
     val isDownloading: Boolean = false,
     val savedFileName: String? = null,
+    val savedFileUri: String? = null,
+    val savedMimeType: String? = null,
     val engineVersion: String? = null,
     val error: String? = null
+)
+
+data class PublishedDownload(
+    val displayName: String,
+    val uri: String,
+    val mimeType: String
 )
 
 class DownloadViewModel(application: Application) : AndroidViewModel(application) {
@@ -71,6 +80,8 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
         _state.value = _state.value.copy(
             selectedFormat = format,
             savedFileName = null,
+            savedFileUri = null,
+            savedMimeType = null,
             error = null
         )
     }
@@ -81,6 +92,8 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
         _state.value = _state.value.copy(
             videoQuality = quality,
             savedFileName = null,
+            savedFileUri = null,
+            savedMimeType = null,
             error = null
         )
     }
@@ -122,6 +135,8 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
             etaSeconds = null,
             status = "Preparing ${format.shortName} download…",
             savedFileName = null,
+            savedFileUri = null,
+            savedMimeType = null,
             error = null
         )
 
@@ -159,7 +174,7 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
                 }
 
                 val outputFile = findOutputFile(sessionDir, format)
-                val publishedName = publishToDownloads(
+                val published = publishToDownloads(
                     context = context,
                     source = outputFile,
                     mimeType = format.mimeType
@@ -169,8 +184,10 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
                     isDownloading = false,
                     progress = 100f,
                     etaSeconds = null,
-                    status = "Download complete",
-                    savedFileName = publishedName,
+                    status = "Download complete • tap the file to open",
+                    savedFileName = published.displayName,
+                    savedFileUri = published.uri,
+                    savedMimeType = published.mimeType,
                     error = null
                 )
             } catch (cancelled: CancellationException) {
@@ -292,7 +309,7 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
         context: Context,
         source: File,
         mimeType: String
-    ): String {
+    ): PublishedDownload {
         val resolver = context.contentResolver
         val targetName = uniqueDisplayName(context, source.name)
 
@@ -326,16 +343,33 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
                 resolver.delete(uri, null, null)
                 throw t
             }
+
+            return PublishedDownload(
+                displayName = targetName,
+                uri = uri.toString(),
+                mimeType = mimeType
+            )
         } else {
             @Suppress("DEPRECATION")
             val downloads = Environment.getExternalStoragePublicDirectory(
                 Environment.DIRECTORY_DOWNLOADS
             )
             val targetDir = File(downloads, "YouTube Downloader").apply { mkdirs() }
-            source.copyTo(File(targetDir, targetName), overwrite = false)
-        }
+            val targetFile = File(targetDir, targetName)
+            source.copyTo(targetFile, overwrite = false)
 
-        return targetName
+            val uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                targetFile
+            )
+
+            return PublishedDownload(
+                displayName = targetName,
+                uri = uri.toString(),
+                mimeType = mimeType
+            )
+        }
     }
 
     private fun uniqueDisplayName(context: Context, requested: String): String {
