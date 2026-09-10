@@ -48,9 +48,9 @@ FFmpeg is also used for AAC audio in MP4 files and PCM WAV output.
 This repository is currently intended for private development and testing. Before wider public redistribution of compiled installers/DMGs, the exact third-party license texts, GPL source-availability obligations, and Apple signing/notarization process should be packaged and reviewed.
 
 
-## Android proof-of-concept
+## Android
 
-The Android proof-of-concept uses the youtubedl-android project:
+The Android app uses the youtubedl-android project:
 
 https://github.com/yausername/youtubedl-android
 
