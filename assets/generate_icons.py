@@ -2,11 +2,9 @@
 """
 Generate platform icon files for YouTube Downloader.
 
-This renders the approved visual concept used by the project:
-dark rounded app tile + red play surface + white play/download symbols.
-
-Outputs are generated during packaging rather than committed as binary build
-artifacts, keeping the source repository small and the platform icons consistent.
+The icon deliberately keeps the play/download mark well inside the safe area
+used by Android launchers and desktop icon masks. This avoids the clipped,
+oversized look that can happen on Samsung and other adaptive-icon launchers.
 """
 
 from __future__ import annotations
@@ -25,7 +23,11 @@ def lerp(a: int, b: int, t: float) -> int:
     return round(a + (b - a) * t)
 
 
-def vertical_gradient(size: int, top: tuple[int, int, int], bottom: tuple[int, int, int]) -> Image.Image:
+def vertical_gradient(
+    size: int,
+    top: tuple[int, int, int],
+    bottom: tuple[int, int, int],
+) -> Image.Image:
     image = Image.new("RGBA", (size, size))
     pixels = image.load()
     for y in range(size):
@@ -42,74 +44,90 @@ def vertical_gradient(size: int, top: tuple[int, int, int], bottom: tuple[int, i
 
 
 def render_icon() -> Image.Image:
-    canvas = vertical_gradient(SIZE, (26, 30, 38), (6, 8, 12))
-    canvas = canvas.convert("RGBA")
+    # Premium dark tile. The outer corners stay transparent so each platform
+    # can apply its native mask cleanly.
+    base = vertical_gradient(SIZE, (28, 32, 40), (8, 10, 14))
 
-    # Soft red glow behind the play surface.
+    mask = Image.new("L", base.size, 0)
+    md = ImageDraw.Draw(mask)
+    md.rounded_rectangle((42, 42, 982, 982), radius=205, fill=255)
+
+    canvas = Image.new("RGBA", base.size, (0, 0, 0, 0))
+    canvas.paste(base, (0, 0), mask)
+
+    # Subtle glow stays contained behind the red play surface.
     glow = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
-    glow_draw = ImageDraw.Draw(glow)
-    glow_draw.ellipse((170, 390, 890, 990), fill=(220, 20, 30, 70))
-    glow = glow.filter(ImageFilter.GaussianBlur(95))
+    gd = ImageDraw.Draw(glow)
+    gd.ellipse((260, 300, 790, 790), fill=(225, 25, 38, 55))
+    glow = glow.filter(ImageFilter.GaussianBlur(85))
     canvas = Image.alpha_composite(canvas, glow)
 
-    # Dark outer rounded tile.
-    mask = Image.new("L", canvas.size, 0)
-    mask_draw = ImageDraw.Draw(mask)
-    mask_draw.rounded_rectangle((28, 28, 996, 996), radius=190, fill=255)
-    clipped = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
-    clipped.paste(canvas, (0, 0), mask)
-    canvas = clipped
-
-    # Red play-button shadow.
+    # Smaller, centred play surface with generous margin around the mark.
     shadow = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
     sd = ImageDraw.Draw(shadow)
-    sd.rounded_rectangle((155, 240, 855, 735), radius=125, fill=(0, 0, 0, 165))
-    shadow = shadow.filter(ImageFilter.GaussianBlur(28))
+    sd.rounded_rectangle(
+        (205, 300, 815, 715),
+        radius=108,
+        fill=(0, 0, 0, 135),
+    )
+    shadow = shadow.filter(ImageFilter.GaussianBlur(24))
     canvas = Image.alpha_composite(canvas, shadow)
 
-    # Main red surface.
     red = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
     rd = ImageDraw.Draw(red)
-    rd.rounded_rectangle((145, 215, 850, 710), radius=125, fill=(245, 18, 28, 255))
-    rd.rounded_rectangle((165, 230, 830, 365), radius=105, fill=(255, 65, 71, 80))
-    canvas = Image.alpha_composite(canvas, red)
+    rd.rounded_rectangle(
+        (195, 280, 805, 695),
+        radius=108,
+        fill=(245, 29, 42, 255),
+    )
 
-    # Play triangle with a subtle shadow.
-    triangle = [(380, 345), (380, 590), (595, 468)]
-    tri_shadow = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
-    tsd = ImageDraw.Draw(tri_shadow)
-    tsd.polygon([(x + 12, y + 16) for x, y in triangle], fill=(0, 0, 0, 115))
-    tri_shadow = tri_shadow.filter(ImageFilter.GaussianBlur(18))
-    canvas = Image.alpha_composite(canvas, tri_shadow)
+    # Very restrained highlight so it remains crisp at small launcher sizes.
+    rd.rounded_rectangle(
+        (215, 298, 785, 405),
+        radius=82,
+        fill=(255, 78, 86, 48),
+    )
+    canvas = Image.alpha_composite(canvas, red)
 
     fg = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
     fd = ImageDraw.Draw(fg)
-    fd.polygon(triangle, fill=(255, 255, 255, 255))
 
-    # Download arrow.
-    arrow = [
-        (665, 490),
-        (755, 490),
-        (755, 590),
-        (815, 590),
-        (710, 705),
-        (605, 590),
-        (665, 590),
-    ]
-    fd.polygon(arrow, fill=(255, 255, 255, 255))
-
-    # Download tray.
-    tray_width = 45
-    fd.line(
-        [(585, 730), (585, 775), (620, 810), (805, 810), (840, 775), (840, 730)],
+    # Play mark.
+    fd.polygon(
+        [(335, 385), (335, 590), (515, 487)],
         fill=(255, 255, 255, 255),
-        width=tray_width,
+    )
+
+    # Download arrow, entirely contained within the red panel.
+    fd.polygon(
+        [
+            (615, 385),
+            (690, 385),
+            (690, 500),
+            (750, 500),
+            (652, 600),
+            (554, 500),
+            (615, 500),
+        ],
+        fill=(255, 255, 255, 255),
+    )
+
+    # Download tray, also kept within the panel so no platform mask clips it.
+    fd.line(
+        [
+            (565, 625),
+            (565, 645),
+            (590, 670),
+            (715, 670),
+            (740, 645),
+            (740, 625),
+        ],
+        fill=(255, 255, 255, 255),
+        width=34,
         joint="curve",
     )
 
     canvas = Image.alpha_composite(canvas, fg)
-
-    # Keep the outer corners transparent so each OS can apply its own mask.
     return canvas
 
 
@@ -126,7 +144,15 @@ def save_windows(image: Image.Image) -> Path:
     image.save(
         path,
         format="ICO",
-        sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)],
+        sizes=[
+            (16, 16),
+            (24, 24),
+            (32, 32),
+            (48, 48),
+            (64, 64),
+            (128, 128),
+            (256, 256),
+        ],
     )
     return path
 
