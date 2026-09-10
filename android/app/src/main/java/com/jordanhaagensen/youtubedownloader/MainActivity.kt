@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -52,7 +53,7 @@ class MainActivity : ComponentActivity() {
     private val storagePermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (granted) {
-                viewModel.startMp3Download()
+                viewModel.startDownload()
             }
         }
 
@@ -94,7 +95,7 @@ class MainActivity : ComponentActivity() {
             return
         }
 
-        viewModel.startMp3Download()
+        viewModel.startDownload()
     }
 }
 
@@ -130,6 +131,32 @@ private fun DownloaderScreen(
     val accent = MaterialTheme.colorScheme.primary
     val scroll = rememberScrollState()
 
+    val qualityText = when (state.selectedFormat) {
+        OutputFormat.MP4_VIDEO -> state.videoQuality
+        OutputFormat.MP3_AUDIO -> "320 kbps • high quality"
+        OutputFormat.WAV_AUDIO -> "Uncompressed PCM"
+    }
+
+    val downloadButtonText = when (state.selectedFormat) {
+        OutputFormat.MP4_VIDEO -> "Download MP4 • ${state.videoQuality}"
+        OutputFormat.MP3_AUDIO -> "Download MP3 • 320 kbps"
+        OutputFormat.WAV_AUDIO -> "Download WAV • PCM"
+    }
+
+    val statusBadge = when {
+        state.isDownloading -> "DOWNLOADING"
+        state.error != null -> "FAILED"
+        state.savedFileName != null -> "COMPLETE"
+        else -> "READY"
+    }
+
+    val statusBadgeColor = when (statusBadge) {
+        "DOWNLOADING" -> Color(0xFF77A7FF)
+        "FAILED" -> MaterialTheme.colorScheme.error
+        "COMPLETE" -> Color(0xFF55C989)
+        else -> muted
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -146,7 +173,7 @@ private fun DownloaderScreen(
         ) {
             Column {
                 Text(
-                    text = "ANDROID TEST • V0.1.1",
+                    text = "ANDROID • V0.2",
                     color = accent,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
@@ -160,7 +187,7 @@ private fun DownloaderScreen(
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "First Android proof-of-concept: save a high-quality MP3 directly to your phone.",
+                    text = "Download video or audio directly to your phone.",
                     color = muted,
                     fontSize = 14.sp
                 )
@@ -197,6 +224,94 @@ private fun DownloaderScreen(
                         fontSize = 13.sp
                     )
 
+                    Text(
+                        text = "Format",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutputChoiceButton(
+                            label = "MP4",
+                            selected = state.selectedFormat == OutputFormat.MP4_VIDEO,
+                            enabled = !state.isDownloading,
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                viewModel.setOutputFormat(OutputFormat.MP4_VIDEO)
+                            }
+                        )
+                        OutputChoiceButton(
+                            label = "MP3",
+                            selected = state.selectedFormat == OutputFormat.MP3_AUDIO,
+                            enabled = !state.isDownloading,
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                viewModel.setOutputFormat(OutputFormat.MP3_AUDIO)
+                            }
+                        )
+                        OutputChoiceButton(
+                            label = "WAV",
+                            selected = state.selectedFormat == OutputFormat.WAV_AUDIO,
+                            enabled = !state.isDownloading,
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                viewModel.setOutputFormat(OutputFormat.WAV_AUDIO)
+                            }
+                        )
+                    }
+
+                    if (state.selectedFormat == OutputFormat.MP4_VIDEO) {
+                        Text(
+                            text = "Video quality",
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            DownloadViewModel.VIDEO_QUALITIES.forEach { quality ->
+                                OutputChoiceButton(
+                                    label = quality,
+                                    selected = state.videoQuality == quality,
+                                    enabled = !state.isDownloading,
+                                    modifier = Modifier.weight(1f),
+                                    onClick = { viewModel.setVideoQuality(quality) }
+                                )
+                            }
+                        }
+                    } else {
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFF13161C)
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Audio quality",
+                                    color = muted,
+                                    fontSize = 13.sp
+                                )
+                                Text(
+                                    text = qualityText,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 13.sp
+                                )
+                            }
+                        }
+                    }
+
                     Button(
                         onClick = onDownload,
                         enabled = !state.isDownloading,
@@ -205,7 +320,7 @@ private fun DownloaderScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = accent)
                     ) {
                         Text(
-                            text = "Download MP3 • 320 kbps",
+                            text = downloadButtonText,
                             modifier = Modifier.padding(vertical = 5.dp),
                             fontWeight = FontWeight.Bold
                         )
@@ -228,8 +343,8 @@ private fun DownloaderScreen(
                     ) {
                         Text("Status", fontWeight = FontWeight.SemiBold)
                         Text(
-                            text = if (state.isDownloading) "DOWNLOADING" else "READY",
-                            color = if (state.isDownloading) Color(0xFF77A7FF) else muted,
+                            text = statusBadge,
+                            color = statusBadgeColor,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -317,14 +432,14 @@ private fun DownloaderScreen(
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
-                        text = "This test build",
+                        text = "Output details",
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
-                        text = "• MP3 only for this first Android test\n" +
-                            "• 320 kbps MP3 output\n" +
-                            "• Saves through Android's Downloads system\n" +
-                            "• Includes yt-dlp, QuickJS and FFmpeg inside the APK",
+                        text = "• MP4: H.264 + AAC, 1080p / 720p / 480p\n" +
+                            "• MP3: 320 kbps audio\n" +
+                            "• WAV: uncompressed PCM audio\n" +
+                            "• Saves to Downloads/YouTube Downloader",
                         color = muted,
                         fontSize = 13.sp,
                         lineHeight = 20.sp
@@ -338,6 +453,35 @@ private fun DownloaderScreen(
                 fontSize = 12.sp,
                 modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp)
             )
+        }
+    }
+}
+
+@Composable
+private fun OutputChoiceButton(
+    label: String,
+    selected: Boolean,
+    enabled: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    if (selected) {
+        Button(
+            onClick = onClick,
+            enabled = enabled,
+            modifier = modifier,
+            shape = RoundedCornerShape(11.dp)
+        ) {
+            Text(label, fontWeight = FontWeight.Bold)
+        }
+    } else {
+        OutlinedButton(
+            onClick = onClick,
+            enabled = enabled,
+            modifier = modifier,
+            shape = RoundedCornerShape(11.dp)
+        ) {
+            Text(label)
         }
     }
 }
