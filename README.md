@@ -3,7 +3,7 @@
 Current builds:
 
 - **Windows / macOS desktop:** V0.6.2
-- **Android:** V0.1 proof-of-concept
+- **Android:** V0.1.1 proof-of-concept
 
 The desktop app downloads **authorised** YouTube media as:
 
@@ -52,9 +52,11 @@ You do **not** need Python, FFmpeg, Deno, yt-dlp, Android Studio, or other devel
 
 The source-code files in the repository are not the installer. The easiest way to install the app is to download a finished build from **GitHub Actions**.
 
-## Android — V0.1 proof-of-concept
+## Android — V0.1.1 proof-of-concept
 
 The first Android build is intentionally limited to **MP3 downloads** while the Android engine is validated on a real phone.
+
+V0.1.1 also updates its on-device yt-dlp engine to the current stable release before the first download of each launch. This was added after the first phone test exposed the August 2026 YouTube HTTP 403 regression.
 
 It currently supports:
 
@@ -102,7 +104,7 @@ After completion, look in:
 
 **Downloads → YouTube Downloader**
 
-This V0.1 Android build is a proof-of-concept. MP4, WAV, preview metadata, queues and background downloading come after the MP3 engine has been proven on a real device.
+This V0.1.1 Android build is a proof-of-concept. MP4, WAV, preview metadata, queues and background downloading come after the MP3 engine has been proven on a real device.
 
 ---
 
@@ -287,7 +289,7 @@ The Mac workflow builds and verifies Intel and Apple Silicon packages separately
 
 - **YouTubeDownloader-Android-POC**
 
-The Android artifact currently contains a debug APK for private testing. V0.1 is MP3-only while the on-device yt-dlp / QuickJS / FFmpeg path is being validated.
+The Android artifact currently contains a debug APK for private testing. V0.1.1 is MP3-only while the on-device yt-dlp / QuickJS / FFmpeg path is being validated.
 
 ---
 
