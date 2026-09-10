@@ -146,7 +146,7 @@ private fun DownloaderScreen(
         ) {
             Column {
                 Text(
-                    text = "ANDROID TEST • V0.1",
+                    text = "ANDROID TEST • V0.1.1",
                     color = accent,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
@@ -240,6 +240,14 @@ private fun DownloaderScreen(
                         color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 14.sp
                     )
+
+                    state.engineVersion?.let { version ->
+                        Text(
+                            text = "yt-dlp engine: $version",
+                            color = muted,
+                            fontSize = 12.sp
+                        )
+                    }
 
                     LinearProgressIndicator(
                         progress = { state.progress / 100f },
