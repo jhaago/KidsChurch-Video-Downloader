@@ -18,20 +18,21 @@ else
 fi
 
 echo "=========================================="
-echo "YouTube Downloader V0.6.2 - macOS $ARCH_LABEL"
+echo "YouTube Downloader V0.6.3 - macOS $ARCH_LABEL"
 echo "=========================================="
 echo ""
 
 python3 -c "import tkinter; print('Tkinter OK')"
 python3 -m pip install -r requirements.txt
 python3 -m py_compile main.py
+python3 assets/generate_icons.py --platform macos
 
 chmod +x prepare_tools_macos.sh
 ./prepare_tools_macos.sh
 
 rm -rf build dist macos_output macos_package
 
-python3 -m PyInstaller   --noconfirm   --clean   --windowed   --onedir   --name "$APP_NAME"   --osx-bundle-identifier "$BUNDLE_ID"   main.py
+python3 -m PyInstaller   --noconfirm   --clean   --windowed   --onedir   --name "$APP_NAME"   --icon assets/generated/youtube_downloader.icns   --osx-bundle-identifier "$BUNDLE_ID"   main.py
 
 APP="dist/$APP_NAME.app"
 MACOS_DIR="$APP/Contents/MacOS"
@@ -65,8 +66,8 @@ echo "Verifying bundled tools..."
 mkdir -p macos_output macos_package
 cp -R "$APP" "macos_package/$APP_NAME.app"
 
-ZIP_PATH="macos_output/YouTubeDownloader-macOS-$ARCH_LABEL-v0.6.2.zip"
-DMG_PATH="macos_output/YouTubeDownloader-macOS-$ARCH_LABEL-v0.6.2.dmg"
+ZIP_PATH="macos_output/YouTubeDownloader-macOS-$ARCH_LABEL-v0.6.3.zip"
+DMG_PATH="macos_output/YouTubeDownloader-macOS-$ARCH_LABEL-v0.6.3.dmg"
 
 echo "Creating app ZIP..."
 ditto -c -k --sequesterRsrc --keepParent "$APP" "$ZIP_PATH"
