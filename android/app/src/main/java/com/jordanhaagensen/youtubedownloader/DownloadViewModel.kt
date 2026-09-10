@@ -21,8 +21,21 @@ import java.io.File
 import java.io.FileInputStream
 import java.util.UUID
 
+enum class OutputFormat(
+    val displayName: String,
+    val shortName: String,
+    val extension: String,
+    val mimeType: String
+) {
+    MP4_VIDEO("MP4 Video", "MP4", "mp4", "video/mp4"),
+    MP3_AUDIO("MP3 Audio", "MP3", "mp3", "audio/mpeg"),
+    WAV_AUDIO("WAV Audio", "WAV", "wav", "audio/wav")
+}
+
 data class DownloadUiState(
     val url: String = "",
+    val selectedFormat: OutputFormat = OutputFormat.MP4_VIDEO,
+    val videoQuality: String = "1080p",
     val status: String = "Ready",
     val progress: Float = 0f,
     val etaSeconds: Long? = null,
@@ -53,6 +66,25 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
         _state.value = _state.value.copy(url = value, error = null)
     }
 
+    fun setOutputFormat(format: OutputFormat) {
+        if (_state.value.isDownloading) return
+        _state.value = _state.value.copy(
+            selectedFormat = format,
+            savedFileName = null,
+            error = null
+        )
+    }
+
+    fun setVideoQuality(quality: String) {
+        if (_state.value.isDownloading) return
+        if (quality !in VIDEO_QUALITIES) return
+        _state.value = _state.value.copy(
+            videoQuality = quality,
+            savedFileName = null,
+            error = null
+        )
+    }
+
     fun acceptSharedText(text: String?) {
         if (text.isNullOrBlank()) return
         val match = Regex("""https?://\S+""").find(text)?.value ?: text.trim()
@@ -61,30 +93,34 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun startMp3Download() {
+    fun startDownload() {
         if (_state.value.isDownloading) return
 
-        val url = _state.value.url.trim()
+        val snapshot = _state.value
+        val url = snapshot.url.trim()
+        val format = snapshot.selectedFormat
+        val videoQuality = snapshot.videoQuality
+
         if (!url.startsWith("http://") && !url.startsWith("https://")) {
-            _state.value = _state.value.copy(error = "Paste a valid YouTube URL first.")
+            _state.value = snapshot.copy(error = "Paste a valid YouTube URL first.")
             return
         }
 
         if (!DownloaderRuntime.ready) {
-            _state.value = _state.value.copy(
+            _state.value = snapshot.copy(
                 error = DownloaderRuntime.error ?: "The download engine is not ready yet."
             )
             return
         }
 
-        val id = "android-mp3-${UUID.randomUUID()}"
+        val id = "android-${format.extension}-${UUID.randomUUID()}"
         processId = id
 
-        _state.value = _state.value.copy(
+        _state.value = snapshot.copy(
             isDownloading = true,
             progress = 0f,
             etaSeconds = null,
-            status = "Preparing download…",
+            status = "Preparing ${format.shortName} download…",
             savedFileName = null,
             error = null
         )
@@ -104,41 +140,30 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
                 val currentVersion = YoutubeDL.getInstance().version(context)
                 _state.value = _state.value.copy(
                     engineVersion = currentVersion,
-                    status = if (currentVersion.isNullOrBlank()) {
-                        "Preparing download…"
-                    } else {
-                        "yt-dlp $currentVersion • Preparing download…"
-                    }
+                    status = "Preparing ${format.shortName} download…"
                 )
 
-                val request = YoutubeDLRequest(url).apply {
-                    addOption("--no-playlist")
-                    addOption("--no-mtime")
-                    addOption("--extract-audio")
-                    addOption("--audio-format", "mp3")
-                    addOption("--audio-quality", "320K")
-                    addOption("--remote-components", "ejs:github")
-                    addOption(
-                        "-o",
-                        File(sessionDir, "%(title).180B.%(ext)s").absolutePath
-                    )
-                }
+                val request = buildRequest(
+                    url = url,
+                    format = format,
+                    videoQuality = videoQuality,
+                    sessionDir = sessionDir
+                )
 
-                YoutubeDL.getInstance().execute(request, id) { progress, eta, line ->
+                YoutubeDL.getInstance().execute(request, id) { progress, eta, _ ->
                     _state.value = _state.value.copy(
                         progress = progress.coerceIn(0f, 100f),
                         etaSeconds = eta.takeIf { it >= 0 },
-                        status = if (line.isBlank()) "Downloading…" else line
+                        status = "Downloading ${format.shortName}…"
                     )
                 }
 
-                val mp3 = sessionDir
-                    .walkTopDown()
-                    .filter { it.isFile && it.extension.equals("mp3", ignoreCase = true) }
-                    .maxByOrNull { it.lastModified() }
-                    ?: error("The download finished but no MP3 file was produced.")
-
-                val publishedName = publishToDownloads(context, mp3)
+                val outputFile = findOutputFile(sessionDir, format)
+                val publishedName = publishToDownloads(
+                    context = context,
+                    source = outputFile,
+                    mimeType = format.mimeType
+                )
 
                 _state.value = _state.value.copy(
                     isDownloading = false,
@@ -159,7 +184,7 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
                 val message = t.message
                     ?.lineSequence()
                     ?.lastOrNull { it.isNotBlank() }
-                    ?.take(240)
+                    ?.take(300)
                     ?: t.javaClass.simpleName
 
                 _state.value = _state.value.copy(
@@ -173,6 +198,59 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
                 sessionDir.deleteRecursively()
             }
         }
+    }
+
+    private fun buildRequest(
+        url: String,
+        format: OutputFormat,
+        videoQuality: String,
+        sessionDir: File
+    ): YoutubeDLRequest {
+        return YoutubeDLRequest(url).apply {
+            addOption("--no-playlist")
+            addOption("--no-mtime")
+            addOption("--remote-components", "ejs:github")
+            addOption(
+                "-o",
+                File(sessionDir, "%(title).180B.%(ext)s").absolutePath
+            )
+
+            when (format) {
+                OutputFormat.MP3_AUDIO -> {
+                    addOption("--extract-audio")
+                    addOption("--audio-format", "mp3")
+                    addOption("--audio-quality", "320K")
+                }
+
+                OutputFormat.WAV_AUDIO -> {
+                    addOption("--extract-audio")
+                    addOption("--audio-format", "wav")
+                }
+
+                OutputFormat.MP4_VIDEO -> {
+                    val height = videoQuality.removeSuffix("p").toIntOrNull() ?: 1080
+                    val selector =
+                        "bestvideo[vcodec^=avc1][height<=$height]+" +
+                            "bestaudio[acodec^=mp4a]/" +
+                            "best[vcodec^=avc1][acodec^=mp4a][height<=$height]"
+                    addOption("--format", selector)
+                    addOption("--merge-output-format", "mp4")
+                }
+            }
+        }
+    }
+
+    private fun findOutputFile(sessionDir: File, format: OutputFormat): File {
+        return sessionDir
+            .walkTopDown()
+            .filter {
+                it.isFile &&
+                    it.extension.equals(format.extension, ignoreCase = true)
+            }
+            .maxByOrNull { it.lastModified() }
+            ?: error(
+                "The download finished but no ${format.shortName} file was produced."
+            )
     }
 
     private fun ensureCurrentYoutubeDL(context: Context) {
@@ -210,14 +288,18 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
         job?.cancel()
     }
 
-    private fun publishToDownloads(context: Context, source: File): String {
+    private fun publishToDownloads(
+        context: Context,
+        source: File,
+        mimeType: String
+    ): String {
         val resolver = context.contentResolver
         val targetName = uniqueDisplayName(context, source.name)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val values = ContentValues().apply {
                 put(MediaStore.Downloads.DISPLAY_NAME, targetName)
-                put(MediaStore.Downloads.MIME_TYPE, "audio/mpeg")
+                put(MediaStore.Downloads.MIME_TYPE, mimeType)
                 put(
                     MediaStore.Downloads.RELATIVE_PATH,
                     Environment.DIRECTORY_DOWNLOADS + "/YouTube Downloader"
@@ -266,14 +348,14 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
             if (!File(targetDir, requested).exists()) return requested
 
             val stem = requested.substringBeforeLast(".")
-            val ext = requested.substringAfterLast(".", "mp3")
+            val ext = requested.substringAfterLast(".", "bin")
             var index = 2
             while (File(targetDir, "$stem ($index).$ext").exists()) index++
             return "$stem ($index).$ext"
         }
 
         val stem = requested.substringBeforeLast(".")
-        val ext = requested.substringAfterLast(".", "mp3")
+        val ext = requested.substringAfterLast(".", "bin")
         var candidate = requested
         var index = 2
 
@@ -304,5 +386,9 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
         ).use { cursor ->
             return cursor?.moveToFirst() == true
         }
+    }
+
+    companion object {
+        val VIDEO_QUALITIES = listOf("1080p", "720p", "480p")
     }
 }
