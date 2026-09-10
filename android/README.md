@@ -1,118 +1,109 @@
-# YouTube Downloader — Android V0.1.1 Proof of Concept
+# YouTube Downloader — Android V0.2
 
-This folder contains the first native Android version of YouTube Downloader. GitHub Actions produces an installable test APK automatically.
+Native Android version of YouTube Downloader.
 
-## Purpose of V0.1.1
+## V0.2 features
 
-The first Android milestone is deliberately narrow:
+Android V0.2 expands the successful MP3 proof-of-concept into three output modes:
 
-**YouTube URL → 320 kbps MP3 → Android Downloads folder**
+- **MP4 Video**
+  - 1080p
+  - 720p
+  - 480p
+  - prefers H.264 video and AAC audio so the result is broadly compatible without forcing a full phone-side video transcode
+- **MP3 Audio**
+  - 320 kbps
+- **WAV Audio**
+  - uncompressed PCM
 
-The goal is to prove that the on-device extraction and conversion stack works reliably on a real Android phone before adding the full desktop feature set.
+It also includes:
 
-## V0.1.1 fix
-
-The first real-phone test exposed a YouTube HTTP 403 regression in the yt-dlp version bundled by the Android library. yt-dlp fixed that regression in stable version 2026.08.19.
-
-Before the first download of each app launch, V0.1.1 now checks the official yt-dlp stable release and updates the on-device yt-dlp executable. The status panel also shows the installed yt-dlp version so failures can be diagnosed more easily.
-
-## Current features
-
-- native Kotlin / Jetpack Compose app
-- dark interface matching the desktop direction
-- paste a YouTube URL
+- native Kotlin / Jetpack Compose UI
+- new launcher icon
+- YouTube URL paste
 - Android share target:
-  - YouTube app
+  - YouTube
   - Share
   - YouTube Downloader
-- MP3 download
-- 320 kbps audio conversion
 - progress and ETA
 - cancellation
 - Android MediaStore publishing
-- output folder:
+- output to:
   - Downloads/YouTube Downloader
+- yt-dlp stable update check before the first download of each launch
+- installed yt-dlp version shown in the status card
+- clear READY / DOWNLOADING / COMPLETE / FAILED status badge
 
-## Android engine
+## Why MP4 prefers H.264/AAC
 
-V0.1.1 uses:
+The desktop app can afford to fully transcode downloaded video to its final PowerPoint-friendly format.
 
-- youtubedl-android 0.18.1
-- bundled yt-dlp/Python integration
-- bundled QuickJS support for modern YouTube JavaScript challenges
-- bundled FFmpeg support for MP3 extraction/conversion
+On a phone, full 1080p video transcoding is much more expensive in battery, heat and time. Android V0.2 therefore asks YouTube/yt-dlp for H.264 video plus AAC audio directly and merges those streams into MP4.
 
-The source media is first processed in the app's temporary storage. The completed MP3 is then published through Android MediaStore into the public Downloads folder. This avoids relying on broad storage permissions on modern Android.
+That gives a fast path to a broadly compatible MP4 without unnecessarily re-encoding the whole video.
 
-## Requirements
+## yt-dlp update behaviour
 
-- Android 7.0 / API 24 or newer
-- arm64-v8a or x86_64 device
-- internet access
+The first V0.1 phone test exposed an HTTP 403 issue caused by an older bundled yt-dlp build.
 
-The primary real-device target is modern arm64 Android phones, including current Samsung Galaxy devices.
+V0.1.1 fixed this by updating yt-dlp to the current stable release before the first download of each app launch. V0.2 retains that behaviour.
 
-## Install the test APK
+## Install
 
-The easiest route is the repository's GitHub Actions build:
-
-1. Go to the repository.
-2. Open Actions.
+1. Open the repository on GitHub.
+2. Go to **Actions**.
 3. Select **Build Android APK**.
-4. Open the latest successful run.
-5. Download **YouTubeDownloader-Android-POC**.
-6. Extract the artifact ZIP.
-7. Install **app-debug.apk** on the phone.
+4. Open the latest green run.
+5. Download **YouTubeDownloader-Android-v0.2**.
+6. Extract the ZIP.
+7. Install **app-debug.apk**.
 
-Because this is a private debug build, Android may require permission for the browser/files app to install unknown apps.
+Android may require permission for the browser/files app to install unknown apps because this is a private debug APK.
 
-## Test plan
+## Test checklist
 
-For the first real-phone test:
+Use media you are authorised to download.
 
-1. Launch YouTube Downloader.
-2. Paste a short authorised YouTube URL.
-3. Tap **Download MP3 • 320 kbps**.
-4. Confirm the progress indicator moves.
-5. Confirm the download completes.
-6. Open the phone's Downloads folder.
-7. Confirm the MP3 exists in:
+Test:
+
+1. MP3 download
+2. WAV download
+3. MP4 480p
+4. MP4 720p
+5. MP4 1080p
+6. YouTube → Share → YouTube Downloader
+7. Cancel during a download
+8. duplicate filename handling
+9. verify completed files appear in:
    - Downloads/YouTube Downloader
-8. Play the MP3.
-9. Repeat using:
-   - YouTube app → Share → YouTube Downloader
-10. Test Cancel during a download.
+10. play each output file on the phone
 
-If extraction fails, capture the error text shown in the app.
+For MP4, also inspect that video and audio both play correctly.
 
-## Planned next Android phases
+If a download fails, capture the full error shown in the status card and the displayed yt-dlp engine version.
 
-After V0.1 works on a real device:
+## Planned next phase
 
-1. metadata preview
-2. MP4 video
-3. WAV audio
-4. MP4 quality selection
-5. queue
-6. foreground/background download service
-7. persistent notification progress
-8. output-folder selection
-9. update handling for yt-dlp
-10. release-signed APK/AAB packaging
+After V0.2 real-device testing:
 
-## Building locally
+1. metadata/title preview
+2. download queue
+3. foreground service for long/background downloads
+4. persistent notification progress
+5. output-folder selection
+6. signed release APK/AAB
 
-The project uses Gradle and Android SDK 35.
+## Technical stack
 
-GitHub Actions builds with:
-
-- JDK 17
-- Gradle 8.9
-- Android SDK 35
-- Build Tools 35.0.0
-
-Open the `android` directory as a project in Android Studio, or build from a machine with the required SDK/Gradle environment.
+- Android API 24+
+- Kotlin
+- Jetpack Compose
+- youtubedl-android 0.18.1
+- yt-dlp updated on-device to current stable
+- QuickJS
+- FFmpeg
+- Android MediaStore
 
 ## Distribution note
 
-This APK is currently for private testing. The Android dependency stack includes GPL-licensed components. Licensing and redistribution obligations must be reviewed before public distribution or app-store publication.
+This APK is currently for private development/testing. Licensing and redistribution obligations for bundled GPL components must be reviewed before public distribution or app-store publication.
