@@ -1,5 +1,11 @@
 $ErrorActionPreference = "Stop"
 
+$GitHubHeaders = @{ "User-Agent" = "YouTube-Downloader-build" }
+if ($env:GITHUB_TOKEN) {
+    $GitHubHeaders["Authorization"] = "Bearer $env:GITHUB_TOKEN"
+    $GitHubHeaders["X-GitHub-Api-Version"] = "2022-11-28"
+}
+
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Tools = Join-Path $Root "tools"
 $Temp = Join-Path $env:TEMP "KidsChurchVideoDownloaderTools"
@@ -14,7 +20,7 @@ Write-Host "Downloading latest yt-dlp..."
 Invoke-WebRequest -Uri "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe" -OutFile (Join-Path $Tools "yt-dlp.exe")
 
 Write-Host "Downloading latest Deno..."
-$denoRelease = Invoke-RestMethod -Headers @{ "User-Agent" = "KidsChurch-Video-Downloader-build" } -Uri "https://api.github.com/repos/denoland/deno/releases/latest"
+$denoRelease = Invoke-RestMethod -Headers $GitHubHeaders -Uri "https://api.github.com/repos/denoland/deno/releases/latest"
 $denoAsset = $denoRelease.assets | Where-Object { $_.name -eq "deno-x86_64-pc-windows-msvc.zip" } | Select-Object -First 1
 
 if (-not $denoAsset) {
@@ -28,7 +34,7 @@ Expand-Archive -Path $denoZip -DestinationPath $denoExtract -Force
 Copy-Item (Join-Path $denoExtract "deno.exe") (Join-Path $Tools "deno.exe") -Force
 
 Write-Host "Downloading latest FFmpeg Windows x64 GPL build..."
-$ffmpegRelease = Invoke-RestMethod -Headers @{ "User-Agent" = "YouTube-Downloader-build" } -Uri "https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/latest"
+$ffmpegRelease = Invoke-RestMethod -Headers $GitHubHeaders -Uri "https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/latest"
 $ffmpegAsset = $ffmpegRelease.assets | Where-Object {
     $_.name -match "^ffmpeg-.*-win64-gpl\.zip$" -and
     $_.name -notmatch "-shared" -and
