@@ -1,14 +1,20 @@
-# YouTube Downloader — Android V0.1 Proof of Concept
+# YouTube Downloader — Android V0.1.1 Proof of Concept
 
 This folder contains the first native Android version of YouTube Downloader. GitHub Actions produces an installable test APK automatically.
 
-## Purpose of V0.1
+## Purpose of V0.1.1
 
 The first Android milestone is deliberately narrow:
 
 **YouTube URL → 320 kbps MP3 → Android Downloads folder**
 
 The goal is to prove that the on-device extraction and conversion stack works reliably on a real Android phone before adding the full desktop feature set.
+
+## V0.1.1 fix
+
+The first real-phone test exposed a YouTube HTTP 403 regression in the yt-dlp version bundled by the Android library. yt-dlp fixed that regression in stable version 2026.08.19.
+
+Before the first download of each app launch, V0.1.1 now checks the official yt-dlp stable release and updates the on-device yt-dlp executable. The status panel also shows the installed yt-dlp version so failures can be diagnosed more easily.
 
 ## Current features
 
@@ -29,7 +35,7 @@ The goal is to prove that the on-device extraction and conversion stack works re
 
 ## Android engine
 
-V0.1 uses:
+V0.1.1 uses:
 
 - youtubedl-android 0.18.1
 - bundled yt-dlp/Python integration
