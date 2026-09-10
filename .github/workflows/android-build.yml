@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - icon-polish-v0.2.2
     paths:
       - "android/**"
       - ".github/workflows/android-build.yml"
@@ -50,7 +51,7 @@ jobs:
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
-          name: YouTubeDownloader-Android-v0.2.1
+          name: YouTubeDownloader-Android-v0.2.2
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           compression-level: 0
