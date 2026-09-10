@@ -5,7 +5,7 @@ A cross-platform desktop and Android app for downloading **authorised** YouTube 
 Current builds:
 
 - **Windows / macOS desktop:** V0.6.4
-- **Android:** V0.2.1
+- **Android:** V0.2.2
 
 Available output formats:
 
@@ -13,19 +13,19 @@ Available output formats:
 - **MP3 Audio**
 - **WAV Audio**
 
-The desktop app includes a download queue. Android V0.2.1 currently downloads one item at a time; queue/background support is planned next.
+The desktop app includes a download queue. Android V0.2.2 currently downloads one item at a time; queue/background support is planned next.
 
-## Refined app icon
+## App icon
 
-All packages use the same dark/red play-and-download visual identity.
+All packages use the same play-and-download visual identity.
 
-V0.2.1 / V0.6.4 refines the icon after real-device launcher testing showed that the original mark sat too close to Android's adaptive-icon mask. The play/download artwork is now smaller, better centred, and kept inside the safe zone so the arrow/tray is not clipped on Samsung and other rounded-square launchers.
+The icon was refined after real-device Android launcher testing. The current design uses a soft white rounded tile, red play panel and integrated white download arrow/tray. The artwork is deliberately kept well inside Android's adaptive-icon safe zone so it remains clean on Samsung rounded-square launchers as well as circular and other masks.
 
 - Android uses a safe-zone-aware adaptive launcher icon.
 - Windows generates a matching `.ico` during packaging.
 - macOS generates a matching `.icns` during packaging.
 
-The desktop icon files are generated from `assets/generate_icons.py` so Windows and Mac remain visually consistent.
+The Windows and Mac icons are generated from `assets/generate_icons.py` so the platform packages remain visually consistent.
 
 ---
 
@@ -35,9 +35,9 @@ You do **not** need Python, FFmpeg, Deno, yt-dlp, Android Studio, or other devel
 
 The source-code files in the repository are not the installer. The easiest way to install the app is to download a finished build from **GitHub Actions**.
 
-## Android — V0.2.1
+## Android — V0.2.2
 
-Android V0.2.1 supports:
+Android V0.2.2 supports:
 
 - **MP4 Video**
   - 1080p
@@ -63,7 +63,7 @@ Android V0.2.1 supports:
 3. Select **Build Android APK**.
 4. Open the most recent run with a **green check mark**.
 5. Scroll to **Artifacts**.
-6. Download **YouTubeDownloader-Android-v0.2.1**.
+6. Download **YouTubeDownloader-Android-v0.2.2**.
 7. Extract the downloaded ZIP.
 8. Install:
 
@@ -74,7 +74,7 @@ Android V0.2.1 supports:
 
 You do **not** need to disable Android security globally.
 
-### Use Android V0.2
+### Use Android V0.2.2
 
 1. Paste a YouTube URL, or use:
 
@@ -93,9 +93,9 @@ You do **not** need to disable Android security globally.
 
    **Downloads/YouTube Downloader**
 
-6. Tap the completed filename in the status card to open it. Android hands the file to the normal app associated with that type (video player, music player, editor, etc.).
+6. Tap the completed file card in the app. Android hands the file to the normal/default app registered for that file type, such as a video player, music player or editor.
 
-The status panel shows **READY**, **DOWNLOADING**, **COMPLETE**, or **FAILED** and also displays the active yt-dlp engine version once checked.
+The status panel shows **READY**, **DOWNLOADING**, **COMPLETE**, or **FAILED** and displays the active yt-dlp engine version once checked.
 
 ---
 
@@ -216,7 +216,7 @@ Current automated build artifacts:
 
 ### Android
 
-- **YouTubeDownloader-Android-v0.2.1**
+- **YouTubeDownloader-Android-v0.2.2**
 
 Always use the most recent **green** workflow run.
 
