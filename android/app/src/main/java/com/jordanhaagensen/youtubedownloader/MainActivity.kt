@@ -3,14 +3,17 @@ package com.jordanhaagensen.youtubedownloader
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -65,7 +68,10 @@ class MainActivity : ComponentActivity() {
             YouTubeDownloaderTheme {
                 DownloaderScreen(
                     viewModel = viewModel,
-                    onDownload = { startDownloadWithPermissionCheck() }
+                    onDownload = { startDownloadWithPermissionCheck() },
+                    onOpenDownload = { uri, mimeType ->
+                        openDownloadedFile(uri, mimeType)
+                    }
                 )
             }
         }
@@ -80,6 +86,23 @@ class MainActivity : ComponentActivity() {
     private fun consumeShareIntent(intent: Intent?) {
         if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
             viewModel.acceptSharedText(intent.getStringExtra(Intent.EXTRA_TEXT))
+        }
+    }
+
+    private fun openDownloadedFile(uriString: String, mimeType: String) {
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(Uri.parse(uriString), mimeType)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+
+        try {
+            startActivity(intent)
+        } catch (_: Exception) {
+            Toast.makeText(
+                this,
+                "No app is available to open this file type.",
+                Toast.LENGTH_LONG
+            ).show()
         }
     }
 
@@ -122,7 +145,8 @@ private fun YouTubeDownloaderTheme(content: @Composable () -> Unit) {
 @Composable
 private fun DownloaderScreen(
     viewModel: DownloadViewModel,
-    onDownload: () -> Unit
+    onDownload: () -> Unit,
+    onOpenDownload: (String, String) -> Unit
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val muted = Color(0xFF9BA5B3)
@@ -172,7 +196,7 @@ private fun DownloaderScreen(
         ) {
             Column {
                 Text(
-                    text = "ANDROID • V0.2",
+                    text = "ANDROID • V0.2.1",
                     color = accent,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
@@ -400,16 +424,68 @@ private fun DownloaderScreen(
                     }
 
                     state.savedFileName?.let { name ->
-                        Text(
-                            text = "Saved: $name",
-                            color = Color(0xFF55C989),
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            text = "Downloads/YouTube Downloader",
-                            color = muted,
-                            fontSize = 13.sp
-                        )
+                        val uri = state.savedFileUri
+                        val mimeType = state.savedMimeType
+
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .then(
+                                    if (uri != null && mimeType != null) {
+                                        Modifier.clickable {
+                                            onOpenDownload(uri, mimeType)
+                                        }
+                                    } else {
+                                        Modifier
+                                    }
+                                ),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFF132019)
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 13.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                                ) {
+                                    Text(
+                                        text = name,
+                                        color = Color(0xFF71D99B),
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 14.sp
+                                    )
+                                    Text(
+                                        text = "Downloads/YouTube Downloader",
+                                        color = muted,
+                                        fontSize = 12.sp
+                                    )
+                                }
+
+                                if (uri != null && mimeType != null) {
+                                    Text(
+                                        text = "OPEN",
+                                        color = Color(0xFF71D99B),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+
+                        if (uri != null && mimeType != null) {
+                            Text(
+                                text = "Tap the downloaded file to open it with your phone's default app.",
+                                color = muted,
+                                fontSize = 12.sp
+                            )
+                        }
                     }
 
                     state.error?.let { message ->
