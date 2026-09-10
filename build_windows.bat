@@ -3,7 +3,7 @@ setlocal
 cd /d "%~dp0"
 
 echo ============================================
-echo YouTube Downloader V0.6.2 - Windows Build
+echo YouTube Downloader V0.6.3 - Windows Build
 echo ============================================
 echo.
 
@@ -28,6 +28,11 @@ if exist build rmdir /s /q build
 if exist dist rmdir /s /q dist
 
 echo.
+echo Generating application icon...
+py assets\generate_icons.py --platform windows
+if errorlevel 1 goto :fail
+
+echo.
 echo Building application...
 py -m PyInstaller ^
   --noconfirm ^
@@ -35,6 +40,7 @@ py -m PyInstaller ^
   --windowed ^
   --onedir ^
   --name YouTubeDownloader ^
+  --icon assets\generated\youtube_downloader.ico ^
   main.py
 
 if errorlevel 1 goto :fail
