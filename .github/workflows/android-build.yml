@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - android-v0.2.1-open-icon-refine
     paths:
       - "android/**"
       - ".github/workflows/android-build.yml"
