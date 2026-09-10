@@ -4,8 +4,8 @@ A cross-platform desktop and Android app for downloading **authorised** YouTube 
 
 Current builds:
 
-- **Windows / macOS desktop:** V0.6.3
-- **Android:** V0.2
+- **Windows / macOS desktop:** V0.6.4
+- **Android:** V0.2.1
 
 Available output formats:
 
@@ -13,17 +13,19 @@ Available output formats:
 - **MP3 Audio**
 - **WAV Audio**
 
-The desktop app includes a download queue. Android V0.2 currently downloads one item at a time; queue/background support is planned next.
+The desktop app includes a download queue. Android V0.2.1 currently downloads one item at a time; queue/background support is planned next.
 
-## New icon
+## Refined app icon
 
-All packages now use the same visual identity: a dark app tile with a red play-button motif and a white download symbol.
+All packages use the same dark/red play-and-download visual identity.
 
-- Android uses an adaptive launcher icon.
+V0.2.1 / V0.6.4 refines the icon after real-device launcher testing showed that the original mark sat too close to Android's adaptive-icon mask. The play/download artwork is now smaller, better centred, and kept inside the safe zone so the arrow/tray is not clipped on Samsung and other rounded-square launchers.
+
+- Android uses a safe-zone-aware adaptive launcher icon.
 - Windows generates a matching `.ico` during packaging.
 - macOS generates a matching `.icns` during packaging.
 
-The desktop icon files are generated from the shared icon renderer in `assets/generate_icons.py`, so Windows and Mac stay visually consistent.
+The desktop icon files are generated from `assets/generate_icons.py` so Windows and Mac remain visually consistent.
 
 ---
 
@@ -33,9 +35,9 @@ You do **not** need Python, FFmpeg, Deno, yt-dlp, Android Studio, or other devel
 
 The source-code files in the repository are not the installer. The easiest way to install the app is to download a finished build from **GitHub Actions**.
 
-## Android — V0.2
+## Android — V0.2.1
 
-Android V0.2 supports:
+Android V0.2.1 supports:
 
 - **MP4 Video**
   - 1080p
@@ -52,6 +54,7 @@ Android V0.2 supports:
 - cancellation
 - automatic yt-dlp stable update check before the first download of each launch
 - saving to **Downloads/YouTube Downloader**
+- **tap a completed file to open it in Android's normal/default app for that file type**
 
 ### Install the Android APK
 
@@ -60,7 +63,7 @@ Android V0.2 supports:
 3. Select **Build Android APK**.
 4. Open the most recent run with a **green check mark**.
 5. Scroll to **Artifacts**.
-6. Download **YouTubeDownloader-Android-v0.2**.
+6. Download **YouTubeDownloader-Android-v0.2.1**.
 7. Extract the downloaded ZIP.
 8. Install:
 
@@ -90,11 +93,13 @@ You do **not** need to disable Android security globally.
 
    **Downloads/YouTube Downloader**
 
+6. Tap the completed filename in the status card to open it. Android hands the file to the normal app associated with that type (video player, music player, editor, etc.).
+
 The status panel shows **READY**, **DOWNLOADING**, **COMPLETE**, or **FAILED** and also displays the active yt-dlp engine version once checked.
 
 ---
 
-## Windows — V0.6.3
+## Windows — V0.6.4
 
 1. Open this repository on GitHub.
 2. Click **Actions**.
@@ -105,7 +110,7 @@ The status panel shows **READY**, **DOWNLOADING**, **COMPLETE**, or **FAILED** a
 7. Extract the ZIP.
 8. Run:
 
-       YouTubeDownloader_Setup_v0.6.3.exe
+       YouTubeDownloader_Setup_v0.6.4.exe
 
 9. Follow the installer.
 10. Launch **YouTube Downloader** from the Start menu or desktop shortcut.
@@ -122,7 +127,7 @@ Do not disable Windows security globally.
 
 ---
 
-## macOS — V0.6.3
+## macOS — V0.6.4
 
 There are separate Intel and Apple Silicon packages.
 
@@ -158,7 +163,7 @@ The current development Mac build is ad-hoc signed but is not Apple notarized.
 
 # Desktop features
 
-The Windows and macOS V0.6.3 desktop versions support:
+The Windows and macOS V0.6.4 desktop versions support:
 
 - preview metadata
 - MP4 / MP3 / WAV output
@@ -211,7 +216,7 @@ Current automated build artifacts:
 
 ### Android
 
-- **YouTubeDownloader-Android-v0.2**
+- **YouTubeDownloader-Android-v0.2.1**
 
 Always use the most recent **green** workflow run.
 
