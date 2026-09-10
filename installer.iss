@@ -1,5 +1,5 @@
 #define MyAppName "YouTube Downloader"
-#define MyAppVersion "0.6.2"
+#define MyAppVersion "0.6.3"
 #define MyAppPublisher "Jordan Haagensen"
 #define MyAppExeName "YouTubeDownloader.exe"
 
@@ -12,13 +12,14 @@ DefaultDirName={autopf}\YouTube Downloader
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 OutputDir=installer_output
-OutputBaseFilename=YouTubeDownloader_Setup_v0.6.2
+OutputBaseFilename=YouTubeDownloader_Setup_v0.6.3
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=lowest
+SetupIconFile=assets\generated\youtube_downloader.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 
 [InstallDelete]
