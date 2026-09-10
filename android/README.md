@@ -1,10 +1,10 @@
-# YouTube Downloader — Android V0.2
+# YouTube Downloader — Android V0.2.1
 
 Native Android version of YouTube Downloader.
 
-## V0.2 features
+## V0.2.1 features
 
-Android V0.2 expands the successful MP3 proof-of-concept into three output modes:
+Android V0.2.1 includes the successful MP3 proof-of-concept into three output modes:
 
 - **MP4 Video**
   - 1080p
@@ -30,6 +30,8 @@ It also includes:
 - Android MediaStore publishing
 - output to:
   - Downloads/YouTube Downloader
+- completed download card is tappable and opens the file through Android's normal file-type handler
+- refined adaptive launcher icon with extra safe-zone padding
 - yt-dlp stable update check before the first download of each launch
 - installed yt-dlp version shown in the status card
 - clear READY / DOWNLOADING / COMPLETE / FAILED status badge
@@ -46,7 +48,7 @@ That gives a fast path to a broadly compatible MP4 without unnecessarily re-enco
 
 The first V0.1 phone test exposed an HTTP 403 issue caused by an older bundled yt-dlp build.
 
-V0.1.1 fixed this by updating yt-dlp to the current stable release before the first download of each app launch. V0.2 retains that behaviour.
+V0.1.1 fixed this by updating yt-dlp to the current stable release before the first download of each app launch. V0.2.1 retains that behaviour.
 
 ## Install
 
@@ -54,7 +56,7 @@ V0.1.1 fixed this by updating yt-dlp to the current stable release before the fi
 2. Go to **Actions**.
 3. Select **Build Android APK**.
 4. Open the latest green run.
-5. Download **YouTubeDownloader-Android-v0.2**.
+5. Download **YouTubeDownloader-Android-v0.2.1**.
 6. Extract the ZIP.
 7. Install **app-debug.apk**.
 
@@ -76,7 +78,9 @@ Test:
 8. duplicate filename handling
 9. verify completed files appear in:
    - Downloads/YouTube Downloader
-10. play each output file on the phone
+10. tap each completed file inside YouTube Downloader
+11. confirm Android opens it in the normal/default app for MP4, MP3 or WAV
+12. play each output file on the phone
 
 For MP4, also inspect that video and audio both play correctly.
 
@@ -84,7 +88,7 @@ If a download fails, capture the full error shown in the status card and the dis
 
 ## Planned next phase
 
-After V0.2 real-device testing:
+After V0.2.1 real-device testing:
 
 1. metadata/title preview
 2. download queue
