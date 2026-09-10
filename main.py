@@ -12,7 +12,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 
 APP_NAME = "YouTube Downloader"
-APP_VERSION = "0.6.3"
+APP_VERSION = "0.6.4"
 
 RESOLUTION_FORMATS = {
     "1080p": "bestvideo[height<=1080]+bestaudio/best[height<=1080]",
