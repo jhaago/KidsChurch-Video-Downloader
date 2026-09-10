@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - icon-polish-v0.2.2
     paths:
       - "android/**"
       - ".github/workflows/android-build.yml"
