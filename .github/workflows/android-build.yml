@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - android-v0.2-formats-icon
     paths:
       - "android/**"
       - ".github/workflows/android-build.yml"
