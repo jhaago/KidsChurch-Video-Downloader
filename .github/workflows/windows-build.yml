@@ -36,6 +36,10 @@ jobs:
         shell: pwsh
         run: python -m py_compile main.py
 
+      - name: Generate application icon
+        shell: pwsh
+        run: python assets\generate_icons.py --platform windows
+
       - name: Download yt-dlp, Deno and FFmpeg
         shell: pwsh
         run: .\prepare_tools.ps1
@@ -43,7 +47,7 @@ jobs:
       - name: Build Windows application
         shell: pwsh
         run: |
-          python -m PyInstaller --noconfirm --clean --windowed --onedir --name YouTubeDownloader main.py
+          python -m PyInstaller --noconfirm --clean --windowed --onedir --name YouTubeDownloader --icon assets\generated\youtube_downloader.ico main.py
           Copy-Item tools\yt-dlp.exe dist\YouTubeDownloader\yt-dlp.exe
           Copy-Item tools\deno.exe dist\YouTubeDownloader\deno.exe
           Copy-Item tools\ffmpeg.exe dist\YouTubeDownloader\ffmpeg.exe
@@ -89,7 +93,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: YouTubeDownloader-Windows-Installer
-          path: installer_output\YouTubeDownloader_Setup_v0.6.2.exe
+          path: installer_output\YouTubeDownloader_Setup_v0.6.3.exe
           if-no-files-found: error
           compression-level: 0
 
