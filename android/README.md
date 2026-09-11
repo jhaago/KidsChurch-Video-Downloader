@@ -1,79 +1,57 @@
-# YouTube Downloader — Android V0.2.2
+# YouTube Downloader — Android V0.3
 
 Native Android version of YouTube Downloader.
 
-## V0.2.2 features
+## V0.3 features
 
-Android V0.2.2 supports three output modes:
+Output modes:
 
-- **MP4 Video**
-  - 1080p
-  - 720p
-  - 480p
-  - prefers H.264 video and AAC audio so the result is broadly compatible without forcing a full phone-side video transcode
-- **MP3 Audio**
-  - 320 kbps
-- **WAV Audio**
-  - uncompressed PCM
+- **MP4 Video** — 1080p / 720p / 480p
+- **MP3 Audio** — 320 kbps
+- **WAV Audio** — uncompressed PCM
 
-It also includes:
+The app also includes:
 
 - native Kotlin / Jetpack Compose UI
 - polished adaptive launcher icon
-- YouTube URL paste
-- Android share target:
-  - YouTube
-  - Share
-  - YouTube Downloader
-- progress and ETA
+- paste a YouTube URL
+- **YouTube → Share → YouTube Downloader** share target
+- progress percentage
+- **live download speed**
+- **estimated time remaining**
 - cancellation
 - Android MediaStore publishing
-- output to:
-  - Downloads/YouTube Downloader
-- completed download card is tappable and opens the file through Android's normal/default file-type handler
-- yt-dlp stable update check before the first download of each launch
-- installed yt-dlp version shown in the status card
-- clear READY / DOWNLOADING / COMPLETE / FAILED status badge
+- output to **Downloads/YouTube Downloader**
+- automatic yt-dlp stable update check before the first download of each launch
+- installed yt-dlp version displayed in the status card
+- READY / DOWNLOADING / COMPLETE / FAILED status badge
+- completed file card with **OPEN WITH…** action
 
-## V0.2.2 icon refinement
+## Download metrics
 
-Real-device testing on a Samsung launcher showed that the earlier icon artwork was too close to the adaptive-icon mask and looked clipped/unrefined.
+While yt-dlp is transferring media, the status section shows three separate values:
 
-V0.2.2 switches to the newer approved visual direction:
+- Progress
+- Speed
+- Time left
 
-- soft white rounded tile
-- red play panel
-- white play symbol
-- white download arrow/tray
-- extra safe-zone padding so the artwork stays clean under rounded-square, circular and other launcher masks
+Speed is read from yt-dlp's live download output. ETA is supplied by the Android yt-dlp wrapper. During merging or audio conversion, the network transfer may already be finished, so speed and time left can show `—`.
 
-## Opening a completed download
+## Opening a completed file
 
-After an MP4, MP3 or WAV finishes, the completed file appears as a tappable card in the status section.
+After a download completes, tap its finished-file card. V0.3 deliberately launches Android's **Open with…** chooser rather than silently forcing a particular player.
 
-Tapping the card sends the file to Android with the correct MIME type using the normal `ACTION_VIEW` flow. Android then opens the file in the phone's default/available app for that type rather than playing it inside YouTube Downloader.
+That lets you choose any compatible installed app for the file type, such as a video player, music player, editor, file manager, or sharing-capable media app.
 
-Examples:
+## MP4 compatibility approach
 
-- MP4 → video player/gallery app
-- MP3 → music/audio player
-- WAV → audio player/editor
+The desktop app can afford to fully transcode video to a presentation-friendly final file. On a phone, full 1080p transcoding is much more expensive in battery, heat, and time.
 
-If Android has more than one suitable app and no default is set, Android may show its normal app chooser.
-
-## Why MP4 prefers H.264/AAC
-
-The desktop app can afford to fully transcode downloaded video to its final PowerPoint-friendly format.
-
-On a phone, full 1080p video transcoding is much more expensive in battery, heat and time. Android therefore asks YouTube/yt-dlp for H.264 video plus AAC audio directly and merges those streams into MP4.
-
-That gives a fast path to a broadly compatible MP4 without unnecessarily re-encoding the whole video.
+Android therefore prefers H.264 video plus AAC audio from YouTube and merges those streams into MP4 when available. This provides broad compatibility without unnecessarily re-encoding the whole video.
 
 ## yt-dlp update behaviour
 
-The first V0.1 phone test exposed an HTTP 403 issue caused by an older bundled yt-dlp build.
-
-V0.1.1 fixed this by updating yt-dlp to the current stable release before the first download of each app launch. V0.2.2 retains that behaviour.
+The first Android phone test exposed an HTTP 403 issue caused by an older bundled yt-dlp build. The app checks the official stable yt-dlp release before the first download of each launch and displays the active engine version for troubleshooting.
 
 ## Install
 
@@ -81,44 +59,41 @@ V0.1.1 fixed this by updating yt-dlp to the current stable release before the fi
 2. Go to **Actions**.
 3. Select **Build Android APK**.
 4. Open the latest green run.
-5. Download **YouTubeDownloader-Android-v0.2.2**.
+5. Download **YouTubeDownloader-Android-v0.3**.
 6. Extract the ZIP.
-7. Install **app-debug.apk**.
+7. Install `app-debug.apk`.
 
-Android may require permission for the browser/files app to install unknown apps because this is a private debug APK.
+Android may require permission for the browser or Files app to install unknown apps because this is a private debug APK.
 
 ## Test checklist
 
 Use media you are authorised to download.
-
-Test:
 
 1. MP3 download
 2. WAV download
 3. MP4 480p
 4. MP4 720p
 5. MP4 1080p
-6. YouTube → Share → YouTube Downloader
-7. Cancel during a download
-8. duplicate filename handling
-9. verify completed files appear in:
-   - Downloads/YouTube Downloader
-10. tap each completed file inside YouTube Downloader
-11. confirm Android opens it in the normal/default app for MP4, MP3 or WAV
-12. check the refined launcher icon on the phone's home/app screen
+6. confirm **Speed** changes during download
+7. confirm **Time left** is populated during download
+8. YouTube → Share → YouTube Downloader
+9. cancel during a download
+10. duplicate filename handling
+11. verify files appear in **Downloads/YouTube Downloader**
+12. tap a completed file
+13. confirm Android displays the **Open with…** chooser
+14. choose a compatible app and play/open the file
 
 If a download fails, capture the full error shown in the status card and the displayed yt-dlp engine version.
 
 ## Planned next phase
 
-After V0.2.2 real-device testing:
-
-1. metadata/title preview
-2. download queue
-3. foreground service for long/background downloads
-4. persistent notification progress
-5. output-folder selection
-6. signed release APK/AAB
+- metadata/title preview
+- download queue
+- foreground service for long/background downloads
+- persistent notification progress
+- output-folder selection
+- signed release APK/AAB
 
 ## Technical stack
 
