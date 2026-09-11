@@ -12,7 +12,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 
 APP_NAME = "YouTube Downloader"
-APP_VERSION = "0.6.4"
+APP_VERSION = "0.6.5"
 
 RESOLUTION_FORMATS = {
     "1080p": "bestvideo[height<=1080]+bestaudio/best[height<=1080]",
@@ -134,6 +134,8 @@ class DownloaderApp:
         self.preview_detail_var = tk.StringVar(value="")
         self.tools_var = tk.StringVar(value="Checking bundled tools…")
         self.queue_count_var = tk.StringVar(value="No items queued")
+        self.speed_var = tk.StringVar(value="—")
+        self.eta_var = tk.StringVar(value="—")
 
         self._build_ui()
         self._refresh_tool_status()
@@ -490,7 +492,7 @@ class DownloaderApp:
 
         self.queue_tree = ttk.Treeview(
             queue_table,
-            columns=("title", "format", "quality", "status"),
+            columns=("title", "format", "quality", "status", "open"),
             show="headings",
             height=8,
             selectmode="extended",
@@ -499,15 +501,18 @@ class DownloaderApp:
         self.queue_tree.heading("format", text="FORMAT")
         self.queue_tree.heading("quality", text="QUALITY")
         self.queue_tree.heading("status", text="STATUS")
+        self.queue_tree.heading("open", text="")
         self.queue_tree.column("title", width=560, minwidth=300, stretch=True)
         self.queue_tree.column("format", width=100, minwidth=90, stretch=False, anchor="center")
         self.queue_tree.column("quality", width=105, minwidth=85, stretch=False, anchor="center")
         self.queue_tree.column("status", width=125, minwidth=105, stretch=False, anchor="center")
+        self.queue_tree.column("open", width=110, minwidth=100, stretch=False, anchor="center")
 
         scrollbar = ttk.Scrollbar(queue_table, orient="vertical", command=self.queue_tree.yview)
         self.queue_tree.configure(yscrollcommand=scrollbar.set)
         self.queue_tree.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
+        self.queue_tree.bind("<ButtonRelease-1>", self._on_queue_click, add="+")
 
         self.queue_tree.tag_configure("Queued", foreground=c["muted"])
         self.queue_tree.tag_configure("Running", foreground=c["running"])
@@ -561,6 +566,13 @@ class DownloaderApp:
             maximum=100,
             style="Horizontal.TProgressbar",
         ).pack(fill="x")
+
+        transfer_row = ttk.Frame(progress_card, style="Card.TFrame")
+        transfer_row.pack(fill="x", pady=(9, 0))
+        ttk.Label(transfer_row, text="DOWNLOAD SPEED", style="MutedCard.TLabel").pack(side="left")
+        ttk.Label(transfer_row, textvariable=self.speed_var, style="Card.TLabel").pack(side="left", padx=(8, 28))
+        ttk.Label(transfer_row, text="TIME REMAINING", style="MutedCard.TLabel").pack(side="left")
+        ttk.Label(transfer_row, textvariable=self.eta_var, style="Card.TLabel").pack(side="left", padx=(8, 0))
 
         activity_card = ttk.Frame(outer, style="Card.TFrame", padding=14)
         activity_card.pack(fill="both", expand=False, pady=(0, 10))
@@ -678,9 +690,34 @@ class DownloaderApp:
             self.folder_var.set(folder)
             self._save_settings()
 
-    def _open_folder(self):
-        folder = Path(self.folder_var.get()).expanduser()
-        folder.mkdir(parents=True, exist_ok=True)
+    def _on_queue_click(self, event):
+        if self.queue_tree.identify_region(event.x, event.y) != "cell":
+            return
+        if self.queue_tree.identify_column(event.x) != "#5":
+            return
+
+        iid = self.queue_tree.identify_row(event.y)
+        if not iid:
+            return
+
+        try:
+            job_id = int(iid)
+        except ValueError:
+            return
+
+        with self.jobs_lock:
+            job = next((item for item in self.jobs if item["id"] == job_id), None)
+            if not job or job["status"] != "Complete":
+                return
+            folder = job["output_dir"]
+
+        self._open_specific_folder(folder)
+
+    def _open_specific_folder(self, folder):
+        folder = Path(folder).expanduser()
+        if not folder.exists():
+            messagebox.showerror("Open folder", f"Folder no longer exists:\n{folder}")
+            return
         try:
             if os.name == "nt":
                 os.startfile(folder)
@@ -690,6 +727,17 @@ class DownloaderApp:
                 subprocess.Popen(["xdg-open", str(folder)])
         except Exception as exc:
             messagebox.showerror("Open folder", str(exc))
+
+    def _open_folder(self):
+        folder = Path(self.folder_var.get()).expanduser()
+        folder.mkdir(parents=True, exist_ok=True)
+        self._open_specific_folder(folder)
+
+    def _update_transfer_metrics(self, message):
+        speed_match = re.search(r"•\s+([^•]+?/s)", message)
+        eta_match = re.search(r"ETA\s+([^•]+?)\s*$", message)
+        self.speed_var.set(speed_match.group(1).strip() if speed_match else "—")
+        self.eta_var.set(eta_match.group(1).strip() if eta_match else "—")
 
     def _append_log(self, text):
         self.log.configure(state="normal")
@@ -810,7 +858,7 @@ class DownloaderApp:
             "",
             "end",
             iid=str(job["id"]),
-            values=(job["title"], output_format.replace(" Video", "").replace(" Audio", ""), quality, job["status"]),
+            values=(job["title"], output_format.replace(" Video", "").replace(" Audio", ""), quality, job["status"], ""),
             tags=("Queued",),
         )
         self._refresh_queue_count()
@@ -1310,13 +1358,14 @@ class DownloaderApp:
             return
 
         values = list(self.queue_tree.item(iid, "values"))
-        while len(values) < 4:
+        while len(values) < 5:
             values.append("")
 
         if title is not None:
             values[0] = title
         if status is not None:
             values[3] = "Downloading" if status == "Running" else status
+            values[4] = "Open Folder" if status == "Complete" else ""
 
         tags = (status,) if status is not None else self.queue_tree.item(iid, "tags")
         self.queue_tree.item(iid, values=values, tags=tags)
@@ -1409,12 +1458,15 @@ class DownloaderApp:
                     if job_id == self.current_job_id:
                         self.progress_var.set(max(0, min(100, pct)))
                         self.status_var.set(message)
+                        self._update_transfer_metrics(message)
 
                 elif kind == "job_done":
                     _, job_id, output = event
                     self._update_tree(job_id, status="Complete")
                     self._refresh_queue_count()
                     self.progress_var.set(100)
+                    self.speed_var.set("—")
+                    self.eta_var.set("—")
                     self.status_var.set("Saved: " + Path(output).name)
                     self._append_log(f"Saved: {output}")
 
@@ -1422,6 +1474,8 @@ class DownloaderApp:
                     _, job_id, state, message = event
                     self._update_tree(job_id, status=state)
                     self._refresh_queue_count()
+                    self.speed_var.set("—")
+                    self.eta_var.set("—")
                     self.status_var.set(state)
                     if state == "Failed":
                         self._append_log(f"Failed: {message}")
