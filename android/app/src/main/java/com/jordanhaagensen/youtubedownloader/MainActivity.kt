@@ -90,13 +90,14 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun openDownloadedFile(uriString: String, mimeType: String) {
-        val intent = Intent(Intent.ACTION_VIEW).apply {
+        val viewIntent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(Uri.parse(uriString), mimeType)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
+        val chooser = Intent.createChooser(viewIntent, "Open with")
 
         try {
-            startActivity(intent)
+            startActivity(chooser)
         } catch (_: Exception) {
             Toast.makeText(
                 this,
@@ -196,7 +197,7 @@ private fun DownloaderScreen(
         ) {
             Column {
                 Text(
-                    text = "ANDROID • V0.2.2",
+                    text = "ANDROID • V0.3",
                     color = accent,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
@@ -395,23 +396,28 @@ private fun DownloaderScreen(
                     )
 
                     if (state.isDownloading) {
-                        val eta = state.etaSeconds
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text(
-                                text = "${state.progress.toInt()}%",
-                                color = muted,
-                                fontSize = 13.sp
+                            DownloadMetric(
+                                label = "Progress",
+                                value = "${state.progress.toInt()}%",
+                                modifier = Modifier.weight(1f),
+                                muted = muted
                             )
-                            if (eta != null) {
-                                Text(
-                                    text = "ETA ${formatEta(eta)}",
-                                    color = muted,
-                                    fontSize = 13.sp
-                                )
-                            }
+                            DownloadMetric(
+                                label = "Speed",
+                                value = state.downloadSpeed ?: "—",
+                                modifier = Modifier.weight(1f),
+                                muted = muted
+                            )
+                            DownloadMetric(
+                                label = "Time left",
+                                value = state.etaSeconds?.let(::formatEta) ?: "—",
+                                modifier = Modifier.weight(1f),
+                                muted = muted
+                            )
                         }
 
                         OutlinedButton(
@@ -470,7 +476,7 @@ private fun DownloaderScreen(
 
                                 if (uri != null && mimeType != null) {
                                     Text(
-                                        text = "OPEN",
+                                        text = "OPEN WITH…",
                                         color = Color(0xFF71D99B),
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold
@@ -481,7 +487,7 @@ private fun DownloaderScreen(
 
                         if (uri != null && mimeType != null) {
                             Text(
-                                text = "Tap the downloaded file to open it with your phone's default app.",
+                                text = "Tap the finished file to choose which app should open it.",
                                 color = muted,
                                 fontSize = 12.sp
                             )
@@ -527,6 +533,38 @@ private fun DownloaderScreen(
                 color = muted,
                 fontSize = 12.sp,
                 modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun DownloadMetric(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    muted: Color
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF13161C)),
+        shape = RoundedCornerShape(10.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = label,
+                color = muted,
+                fontSize = 11.sp
+            )
+            Text(
+                text = value,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1
             )
         }
     }
