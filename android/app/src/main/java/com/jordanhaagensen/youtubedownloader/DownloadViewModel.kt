@@ -39,6 +39,7 @@ data class DownloadUiState(
     val videoQuality: String = "1080p",
     val status: String = "Ready",
     val progress: Float = 0f,
+    val downloadSpeed: String? = null,
     val etaSeconds: Long? = null,
     val isDownloading: Boolean = false,
     val savedFileName: String? = null,
@@ -132,6 +133,7 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
         _state.value = snapshot.copy(
             isDownloading = true,
             progress = 0f,
+            downloadSpeed = null,
             etaSeconds = null,
             status = "Preparing ${format.shortName} download…",
             savedFileName = null,
@@ -147,7 +149,9 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
             try {
                 _state.value = _state.value.copy(
                     status = "Checking yt-dlp for updates…",
-                    progress = 0f
+                    progress = 0f,
+                    downloadSpeed = null,
+                    etaSeconds = null
                 )
 
                 ensureCurrentYoutubeDL(context)
@@ -165,9 +169,11 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
                     sessionDir = sessionDir
                 )
 
-                YoutubeDL.getInstance().execute(request, id) { progress, eta, _ ->
+                YoutubeDL.getInstance().execute(request, id) { progress, eta, line ->
+                    val speed = extractDownloadSpeed(line) ?: _state.value.downloadSpeed
                     _state.value = _state.value.copy(
                         progress = progress.coerceIn(0f, 100f),
+                        downloadSpeed = speed,
                         etaSeconds = eta.takeIf { it >= 0 },
                         status = "Downloading ${format.shortName}…"
                     )
@@ -183,6 +189,7 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
                 _state.value = _state.value.copy(
                     isDownloading = false,
                     progress = 100f,
+                    downloadSpeed = null,
                     etaSeconds = null,
                     status = "Download complete • tap the file to open",
                     savedFileName = published.displayName,
@@ -194,6 +201,7 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
                 _state.value = _state.value.copy(
                     isDownloading = false,
                     status = "Cancelled",
+                    downloadSpeed = null,
                     etaSeconds = null
                 )
                 throw cancelled
@@ -206,6 +214,7 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
 
                 _state.value = _state.value.copy(
                     isDownloading = false,
+                    downloadSpeed = null,
                     etaSeconds = null,
                     status = "Download failed",
                     error = message
@@ -215,6 +224,10 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
                 sessionDir.deleteRecursively()
             }
         }
+    }
+
+    private fun extractDownloadSpeed(line: String): String? {
+        return DOWNLOAD_SPEED_REGEX.find(line)?.groupValues?.getOrNull(1)
     }
 
     private fun buildRequest(
@@ -424,5 +437,7 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
 
     companion object {
         val VIDEO_QUALITIES = listOf("1080p", "720p", "480p")
+        private val DOWNLOAD_SPEED_REGEX =
+            Regex("""\bat\s+([^\s]+/s)(?:\s+ETA|\s*$)""", RegexOption.IGNORE_CASE)
     }
 }
