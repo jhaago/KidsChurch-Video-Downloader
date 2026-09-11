@@ -1,184 +1,150 @@
 # YouTube Downloader
 
-A cross-platform desktop and Android app for downloading **authorised** YouTube media.
+A cross-platform app for downloading **authorised** YouTube media as MP4 video, MP3 audio, or WAV audio.
 
 Current builds:
 
-- **Windows / macOS desktop:** V0.6.4
-- **Android:** V0.2.2
+- **Windows / macOS desktop:** V0.6.5
+- **Android:** V0.3
 
-Available output formats:
+The desktop app includes a download queue. Android currently downloads one item at a time.
 
-- **MP4 Video**
-- **MP3 Audio**
-- **WAV Audio**
+## Current features
 
-The desktop app includes a download queue. Android V0.2.2 currently downloads one item at a time; queue/background support is planned next.
+### All platforms
 
-## App icon
+- MP4 video
+- MP3 audio
+- WAV audio
+- download progress
+- **live download speed**
+- **estimated time remaining**
+- refined play/download app icon
+- only intended for media you own or are authorised to download
 
-All packages use the same play-and-download visual identity.
+### Desktop — Windows and macOS
 
-The icon was refined after real-device Android launcher testing. The current design uses a soft white rounded tile, red play panel and integrated white download arrow/tray. The artwork is deliberately kept well inside Android's adaptive-icon safe zone so it remains clean on Samsung rounded-square launchers as well as circular and other masks.
+- metadata preview
+- MP4 quality: 1080p / 720p / 480p
+- MP3: 320 kbps, 48 kHz stereo
+- WAV: signed 16-bit PCM, 48 kHz stereo
+- queued downloads and mixed-format queues
+- cancel current download
+- remove queued items
+- clear finished items
+- remembered save folder and output settings
+- PowerPoint-friendly H.264/AAC MP4 conversion
+- dedicated **Download Speed** and **Time Remaining** display while downloading
+- each completed queue row shows **Open Folder**; click it to open the folder used for that specific download
 
-- Android uses a safe-zone-aware adaptive launcher icon.
-- Windows generates a matching `.ico` during packaging.
-- macOS generates a matching `.icns` during packaging.
+### Android V0.3
 
-The Windows and Mac icons are generated from `assets/generate_icons.py` so the platform packages remain visually consistent.
+- native Kotlin / Jetpack Compose app
+- MP4: 1080p / 720p / 480p
+- MP3: 320 kbps
+- WAV: uncompressed PCM
+- paste a YouTube URL
+- **YouTube → Share → YouTube Downloader**
+- progress, **download speed**, and **time remaining** shown together
+- cancel current download
+- automatic yt-dlp stable update check before the first download of each launch
+- saves to **Downloads/YouTube Downloader**
+- after completion, tap the file and Android shows its normal **Open with…** chooser so you can select the video player, music player, editor, or other compatible app
 
 ---
 
 # How to install
 
-You do **not** need Python, FFmpeg, Deno, yt-dlp, Android Studio, or other developer tools when using the packaged builds. Required download/conversion components are bundled into each platform build.
+You do **not** need Python, FFmpeg, Deno, yt-dlp, Android Studio, or other developer tools when using the packaged builds. The required components are bundled into each platform package.
 
-The source-code files in the repository are not the installer. The easiest way to install the app is to download a finished build from **GitHub Actions**.
+The source files in this repository are not the installer. For normal use, download the latest successful build from **GitHub Actions**.
 
-## Android — V0.2.2
-
-Android V0.2.2 supports:
-
-- **MP4 Video**
-  - 1080p
-  - 720p
-  - 480p
-  - H.264 video + AAC audio selection for broad compatibility
-- **MP3 Audio**
-  - 320 kbps
-- **WAV Audio**
-  - uncompressed PCM
-- paste a YouTube URL
-- **YouTube app → Share → YouTube Downloader**
-- progress and ETA
-- cancellation
-- automatic yt-dlp stable update check before the first download of each launch
-- saving to **Downloads/YouTube Downloader**
-- **tap a completed file to open it in Android's normal/default app for that file type**
-
-### Install the Android APK
+## Android — V0.3
 
 1. Open this repository on GitHub.
-2. Click **Actions**.
+2. Select **Actions**.
 3. Select **Build Android APK**.
 4. Open the most recent run with a **green check mark**.
-5. Scroll to **Artifacts**.
-6. Download **YouTubeDownloader-Android-v0.2.2**.
-7. Extract the downloaded ZIP.
-8. Install:
+5. Under **Artifacts**, download **YouTubeDownloader-Android-v0.3**.
+6. Extract the ZIP.
+7. Install `app-debug.apk`.
+8. Android may ask the browser or Files app for permission to **Install unknown apps**. Allow it for that app if you are comfortable installing this private test build.
+9. Open **YouTube Downloader**.
 
-       app-debug.apk
+You do not need to disable Android security globally.
 
-9. Android may ask the browser/files app for permission to **Install unknown apps**. Allow that permission for the app you are installing from if you are comfortable installing this private test build.
-10. Open **YouTube Downloader**.
+### Using Android
 
-You do **not** need to disable Android security globally.
+Paste a URL or use **YouTube → Share → YouTube Downloader**, choose MP4 / MP3 / WAV, choose video quality when relevant, then start the download.
 
-### Use Android V0.2.2
+During the transfer, the status card shows:
 
-1. Paste a YouTube URL, or use:
+- Progress
+- Download Speed
+- Time left
 
-   **YouTube → Share → YouTube Downloader**
-
-2. Choose:
-   - MP4
-   - MP3
-   - WAV
-3. For MP4, choose:
-   - 1080p
-   - 720p
-   - 480p
-4. Tap the download button.
-5. The completed file is saved under:
-
-   **Downloads/YouTube Downloader**
-
-6. Tap the completed file card in the app. Android hands the file to the normal/default app registered for that file type, such as a video player, music player or editor.
-
-The status panel shows **READY**, **DOWNLOADING**, **COMPLETE**, or **FAILED** and displays the active yt-dlp engine version once checked.
+Completed files are saved to **Downloads/YouTube Downloader**. Tap the finished file card to show Android's **Open with…** chooser.
 
 ---
 
-## Windows — V0.6.4
+## Windows — V0.6.5
 
 1. Open this repository on GitHub.
-2. Click **Actions**.
-3. Click **Build Windows Installer**.
+2. Select **Actions**.
+3. Select **Build Windows Installer**.
 4. Open the latest run with a **green check mark**.
-5. Scroll to **Artifacts**.
-6. Download **YouTubeDownloader-Windows-Installer**.
-7. Extract the ZIP.
-8. Run:
-
-       YouTubeDownloader_Setup_v0.6.4.exe
-
-9. Follow the installer.
-10. Launch **YouTube Downloader** from the Start menu or desktop shortcut.
+5. Under **Artifacts**, download **YouTubeDownloader-Windows-Installer**.
+6. Extract the ZIP.
+7. Run `YouTubeDownloader_Setup_v0.6.5.exe`.
+8. Follow the installer and launch **YouTube Downloader**.
 
 ### Windows SmartScreen
 
-The private development build is not commercially code-signed yet, so Windows SmartScreen may warn about it.
-
-For a build you downloaded from this repository:
-
-**More info → Run anyway**
-
-Do not disable Windows security globally.
+The private development build is not commercially code-signed, so Windows SmartScreen may warn about it. For a build you downloaded from this repository, use **More info → Run anyway** if you are comfortable proceeding. Do not disable Windows security globally.
 
 ---
 
-## macOS — V0.6.4
+## macOS — V0.6.5
 
 There are separate Intel and Apple Silicon packages.
 
-### Check your Mac
-
-Open:
-
-**Apple menu → About This Mac**
-
-Use:
+Check **Apple menu → About This Mac** and use:
 
 - **AppleSilicon** for Apple M-series Macs
 - **Intel** for Intel Macs
 
-### Install
+Then:
 
 1. Open this repository on GitHub.
-2. Click **Actions**.
-3. Click **Build macOS App**.
+2. Select **Actions**.
+3. Select **Build macOS App**.
 4. Open the latest run with a **green check mark**.
-5. Download either:
-   - **YouTubeDownloader-macOS-AppleSilicon**
-   - **YouTubeDownloader-macOS-Intel**
+5. Download **YouTubeDownloader-macOS-AppleSilicon** or **YouTubeDownloader-macOS-Intel**.
 6. Extract the artifact.
 7. Open the included `.dmg`.
 8. Copy **YouTube Downloader.app** to Applications.
 9. On first launch, Control-click/right-click the app and choose **Open**.
 10. Confirm **Open** if macOS asks.
 
-The current development Mac build is ad-hoc signed but is not Apple notarized.
+The development Mac build is ad-hoc signed but is not Apple notarized.
 
 ---
 
-# Desktop features
+# Desktop download queue
 
-The Windows and macOS V0.6.4 desktop versions support:
+Queue rows show the media title, format, quality, status, and—once complete—an **Open Folder** action.
 
-- preview metadata
-- MP4 / MP3 / WAV output
-- MP4 quality selection
-- queued downloads
-- mixed-format queues
-- cancel current download
-- remove queued items
-- clear finished items
-- remembered save folder and output settings
-- presentation-friendly H.264/AAC MP4 conversion
+During the active download, the Current Activity area shows the percentage, live transfer speed, and yt-dlp ETA. During post-processing/conversion, speed and ETA may show `—` because the network download has already finished.
 
-## Desktop output formats
+The existing **Open Save Folder** button remains available for opening the currently selected save directory generally; the completed-row action opens the folder associated with that specific queued job.
 
-### MP4 Video
+---
+
+# Output formats
+
+## MP4 Video
+
+Desktop output is presentation-friendly:
 
 - MP4 container
 - H.264 video
@@ -187,40 +153,29 @@ The Windows and macOS V0.6.4 desktop versions support:
 - fast-start metadata
 - 1080p / 720p / 480p
 
-### MP3 Audio
+Android requests H.264 video + AAC audio directly where practical so the phone can merge streams without a costly full 1080p transcode.
+
+## MP3 Audio
 
 - 320 kbps
-- 48 kHz stereo
+- 48 kHz stereo on desktop
 
-### WAV Audio
+## WAV Audio
 
-- signed 16-bit PCM
-- 48 kHz stereo
-- uncompressed
+- uncompressed PCM
+- signed 16-bit / 48 kHz stereo on desktop
 
 ---
 
-# GitHub Actions builds
+# GitHub Actions artifacts
 
-Current automated build artifacts:
+Use the latest **green** run for each platform.
 
-### Windows
+- Windows: **YouTubeDownloader-Windows-Installer**, **YouTubeDownloader-Windows-Portable**
+- macOS: **YouTubeDownloader-macOS-Intel**, **YouTubeDownloader-macOS-AppleSilicon**
+- Android: **YouTubeDownloader-Android-v0.3**
 
-- **YouTubeDownloader-Windows-Installer**
-- **YouTubeDownloader-Windows-Portable**
-
-### macOS
-
-- **YouTubeDownloader-macOS-Intel**
-- **YouTubeDownloader-macOS-AppleSilicon**
-
-### Android
-
-- **YouTubeDownloader-Android-v0.2.2**
-
-Always use the most recent **green** workflow run.
-
-Historical red runs may remain visible from earlier development attempts; they do not mean the latest build is broken.
+Historical red runs can remain visible from development attempts; use the latest successful run.
 
 ---
 
@@ -230,11 +185,7 @@ Normal users should use the packaged builds above.
 
 ## Windows
 
-Requirements:
-
-- Windows 10/11 x64
-- Python 3.12+
-- internet access
+Requirements: Windows 10/11 x64, Python 3.12+, and internet access.
 
 Run:
 
@@ -244,31 +195,18 @@ Then install Inno Setup 6 and run:
 
     make_installer.bat
 
-The build process generates the Windows icon automatically.
-
 ## macOS
 
-Requirements:
-
-- macOS 12+
-- Python 3.12+
-- Node 22+
-- internet access
+Requirements: macOS 12+, Python 3.12+, Node 22+, and internet access.
 
 Run:
 
     chmod +x build_macos.sh prepare_tools_macos.sh
     ./build_macos.sh
 
-The build process generates the macOS icon automatically.
-
 ## Android
 
-The native Kotlin / Jetpack Compose source is in:
-
-    android/
-
-GitHub Actions builds the APK automatically. For local development, open the `android` folder in Android Studio.
+The Kotlin / Jetpack Compose project is in `android/`. GitHub Actions builds the APK automatically; for local development, open the `android` directory in Android Studio.
 
 ---
 
@@ -278,4 +216,4 @@ Only download media you own or are authorised to download.
 
 The application does not implement DRM circumvention, browser-cookie extraction, account-login automation, or protected-stream bypassing.
 
-See **THIRD_PARTY_NOTICES.md** for bundled component and licensing information.
+See `THIRD_PARTY_NOTICES.md` for bundled component and licensing information.
