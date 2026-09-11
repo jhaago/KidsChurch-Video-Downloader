@@ -156,7 +156,7 @@ open_folder_new = '''    def _on_queue_click(self, event):
     def _open_specific_folder(self, folder):
         folder = Path(folder).expanduser()
         if not folder.exists():
-            messagebox.showerror("Open folder", f"Folder no longer exists:\n{folder}")
+            messagebox.showerror("Open folder", f"Folder no longer exists:\\n{folder}")
             return
         try:
             if os.name == "nt":
