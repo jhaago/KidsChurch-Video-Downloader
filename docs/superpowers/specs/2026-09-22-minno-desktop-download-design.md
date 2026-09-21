@@ -62,7 +62,7 @@ When the user previews or queues a Minno URL and there is no valid Minno session
 1. Launch a dedicated Chromium-based browser window using a Minno-specific persistent profile directory.
 2. Navigate to the requested Minno episode.
 3. Allow the user to sign in normally on Minno's own page.
-4. Observe network requests through the browser debugging protocol.
+4. Observe network requests through the Chrome DevTools Protocol (CDP).
 5. Detect the authorised HLS master playlist (`index.m3u8`).
 6. Save only the browser profile/session state needed for subsequent Minno use.
 7. Return control to the normal preview/queue workflow.
@@ -83,13 +83,13 @@ Add a small Minno account control to the desktop app with:
 - Refresh session
 - Sign out
 
-Signing out removes the dedicated Minno browser profile/session data used by the downloader.
+Signing out first closes any downloader-managed Minno browser process, then removes the dedicated Minno browser profile/session data used by the downloader.
 
 ## Browser Integration
 
 Do not embed a full browser engine inside Tkinter for the first release.
 
-Use an installed Chromium-family browser launched with a dedicated profile and remote-debugging endpoint.
+Use an installed Chromium-family browser launched with a dedicated profile and remote-debugging endpoint, then communicate with it using CDP.
 
 Preferred browser order:
 
@@ -142,15 +142,9 @@ Only fields actually needed by the first release should be implemented.
 
 Before downloading, inspect both the master playlist and selected media playlists.
 
-Reject the stream if the playlists indicate protected encryption or DRM, including indicators such as:
+The first release supports only unencrypted HLS. Reject the stream if any selected playlist contains an active `#EXT-X-KEY` declaration where `METHOD` is not `NONE`, or otherwise indicates protected/licence-based playback such as SAMPLE-AES, Widevine, FairPlay, or equivalent DRM.
 
-- `#EXT-X-KEY` with unsupported/protected encryption
-- SAMPLE-AES
-- Widevine-related protection
-- FairPlay-related protection
-- other licence-based playback protection
-
-The first Minno release supports ordinary unencrypted HLS only.
+This deliberately treats even technically downloadable AES-encrypted HLS as unsupported in the first release. The downloader will not retrieve or use decryption keys.
 
 This safety gate is mandatory and must run before FFmpeg is asked to download media.
 
@@ -210,11 +204,11 @@ During Minno transfer, display:
 - estimated time remaining
 - cancellation state
 
-FFmpeg should be launched with machine-readable progress output.
+FFmpeg should be launched with machine-readable `-progress` output.
 
-Progress can be derived from media-time progress against the known playlist duration. Download speed should use bytes transferred over elapsed wall-clock time. ETA should be based on remaining work and a short rolling-average transfer rate so the value is stable rather than oscillating heavily.
+Percent complete should be based on FFmpeg media output time compared with the known HLS duration. Download speed should be calculated from growth of the temporary output file (or FFmpeg `total_size` when available) over wall-clock time, using a short rolling window. ETA should primarily use remaining media duration divided by FFmpeg's observed processing speed, with the rolling transfer rate available as a fallback when needed. This avoids pretending that media-time progress and network bytes are the same quantity.
 
-The UI should tolerate the first few seconds having no ETA while enough data is collected.
+The UI should tolerate the first few seconds having no ETA while enough samples are collected.
 
 Example:
 
@@ -372,7 +366,7 @@ Windows and macOS builds must continue bundling or locating FFmpeg as they do to
 
 The Minno browser integration should rely on an installed supported Chromium browser for the first version rather than bundling Chromium into the installer.
 
-Packaging scripts may need updates if a browser-debugging Python dependency is introduced.
+Packaging scripts may need updates if a CDP/WebSocket Python dependency is introduced.
 
 ## Testing
 
@@ -426,7 +420,7 @@ Not part of this implementation:
 - subtitle download
 - batch/series Minno download
 - bundled Chromium browser
-- DRM/protected-stream handling
+- encrypted/DRM/protected-stream handling
 - automatic account credential storage
 
 ## Acceptance Criteria
