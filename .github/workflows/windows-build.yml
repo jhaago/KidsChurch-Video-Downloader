@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - feature/minno-desktop-download
     paths-ignore:
       - "android/**"
       - ".github/workflows/android-build.yml"
@@ -41,6 +42,7 @@ jobs:
         run: |
           python -m py_compile main.py desktop_app.py
           python -m compileall -q sources
+          python -c "import desktop_app; print('desktop import OK')"
 
       - name: Generate application icon
         shell: pwsh
