@@ -68,6 +68,8 @@ class PreparedMinnoStream:
 class MinnoDownloadResult:
     path: Path
     needs_conversion: bool
+    title: str
+    duration: float
 
 
 def validate_output_format(output_format: str) -> None:
@@ -318,7 +320,12 @@ class MinnoClient:
                     process_started_callback,
                 )
                 self._status_callback("Minno transfer complete.")
-                return MinnoDownloadResult(path=target, needs_conversion=needs_conversion)
+                return MinnoDownloadResult(
+                    path=target,
+                    needs_conversion=needs_conversion,
+                    title=prepared.title,
+                    duration=prepared.duration,
+                )
             except MinnoDownloadCancelled:
                 target.unlink(missing_ok=True)
                 raise
