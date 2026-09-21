@@ -64,17 +64,17 @@ jobs:
       - name: Verify packaged app
         shell: bash
         run: |
-          test -d "dist/YouTube Downloader.app"
-          codesign --verify --deep --strict "dist/YouTube Downloader.app"
-          test -f "macos_output/YouTubeDownloader-macOS-${{ matrix.label }}-v0.6.5.dmg"
-          test -f "macos_output/YouTubeDownloader-macOS-${{ matrix.label }}-v0.6.5.zip"
+          test -d "dist/KidsChurch Video Downloader.app"
+          codesign --verify --deep --strict "dist/KidsChurch Video Downloader.app"
+          test -f "macos_output/KidsChurchVideoDownloader-macOS-${{ matrix.label }}-v0.7.0.dmg"
+          test -f "macos_output/KidsChurchVideoDownloader-macOS-${{ matrix.label }}-v0.7.0.zip"
 
       - name: Upload macOS build
         uses: actions/upload-artifact@v4
         with:
-          name: YouTubeDownloader-macOS-${{ matrix.label }}
+          name: KidsChurchVideoDownloader-macOS-${{ matrix.label }}
           path: |
-            macos_output/YouTubeDownloader-macOS-${{ matrix.label }}-v0.6.5.dmg
-            macos_output/YouTubeDownloader-macOS-${{ matrix.label }}-v0.6.5.zip
+            macos_output/KidsChurchVideoDownloader-macOS-${{ matrix.label }}-v0.7.0.dmg
+            macos_output/KidsChurchVideoDownloader-macOS-${{ matrix.label }}-v0.7.0.zip
           if-no-files-found: error
           compression-level: 0
