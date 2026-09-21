@@ -1,18 +1,18 @@
-#define MyAppName "YouTube Downloader"
-#define MyAppVersion "0.6.5"
+#define MyAppName "KidsChurch Video Downloader"
+#define MyAppVersion "0.7.0"
 #define MyAppPublisher "Jordan Haagensen"
-#define MyAppExeName "YouTubeDownloader.exe"
+#define MyAppExeName "KidsChurchVideoDownloader.exe"
 
 [Setup]
 AppId={{8B13D9C5-7E09-4C4F-A84E-CCF8C18AF497}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
-DefaultDirName={autopf}\YouTube Downloader
+DefaultDirName={autopf}\KidsChurch Video Downloader
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 OutputDir=installer_output
-OutputBaseFilename=YouTubeDownloader_Setup_v0.6.5
+OutputBaseFilename=KidsChurchVideoDownloader_Setup_v0.7.0
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -23,12 +23,12 @@ SetupIconFile=assets\generated\youtube_downloader.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 
 [InstallDelete]
-Type: files; Name: "{app}\KidsChurchVideoDownloader.exe"
-Type: files; Name: "{autoprograms}\Kids Church Video Downloader.lnk"
-Type: files; Name: "{autodesktop}\Kids Church Video Downloader.lnk"
+Type: files; Name: "{app}\YouTubeDownloader.exe"
+Type: files; Name: "{autoprograms}\YouTube Downloader.lnk"
+Type: files; Name: "{autodesktop}\YouTube Downloader.lnk"
 
 [Files]
-Source: "dist\YouTubeDownloader\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "dist\KidsChurchVideoDownloader\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
