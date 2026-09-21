@@ -2,9 +2,9 @@
 setlocal
 cd /d "%~dp0"
 
-echo ============================================
-echo YouTube Downloader V0.6.5 - Windows Build
-echo ============================================
+echo =====================================================
+echo KidsChurch Video Downloader V0.7.0 - Windows Build
+echo =====================================================
 echo.
 
 where py >nul 2>nul
@@ -39,21 +39,21 @@ py -m PyInstaller ^
   --clean ^
   --windowed ^
   --onedir ^
-  --name YouTubeDownloader ^
+  --name KidsChurchVideoDownloader ^
   --icon assets\generated\youtube_downloader.ico ^
-  main.py
+  desktop_app.py
 
 if errorlevel 1 goto :fail
 
-copy /y "tools\yt-dlp.exe" "dist\YouTubeDownloader\yt-dlp.exe" >nul
-copy /y "tools\deno.exe" "dist\YouTubeDownloader\deno.exe" >nul
-copy /y "tools\ffmpeg.exe" "dist\YouTubeDownloader\ffmpeg.exe" >nul
-copy /y "tools\ffprobe.exe" "dist\YouTubeDownloader\ffprobe.exe" >nul
-copy /y "THIRD_PARTY_NOTICES.md" "dist\YouTubeDownloader\THIRD_PARTY_NOTICES.md" >nul
+copy /y "tools\yt-dlp.exe" "dist\KidsChurchVideoDownloader\yt-dlp.exe" >nul
+copy /y "tools\deno.exe" "dist\KidsChurchVideoDownloader\deno.exe" >nul
+copy /y "tools\ffmpeg.exe" "dist\KidsChurchVideoDownloader\ffmpeg.exe" >nul
+copy /y "tools\ffprobe.exe" "dist\KidsChurchVideoDownloader\ffprobe.exe" >nul
+copy /y "THIRD_PARTY_NOTICES.md" "dist\KidsChurchVideoDownloader\THIRD_PARTY_NOTICES.md" >nul
 
 echo.
 echo Build complete:
-echo dist\YouTubeDownloader\YouTubeDownloader.exe
+echo dist\KidsChurchVideoDownloader\KidsChurchVideoDownloader.exe
 echo.
 echo Run make_installer.bat to create the normal Windows installer.
 echo.
