@@ -1,6 +1,6 @@
 # Third-party notices
 
-YouTube Downloader ships with separate third-party executables alongside the application runtime.
+KidsChurch Video Downloader ships with third-party executables and Python packages alongside the application runtime.
 
 ## yt-dlp
 
@@ -41,12 +41,19 @@ Those packages publish macOS Intel and Apple Silicon binaries sourced from estab
 
 The build verifies that FFmpeg includes both `libx264` and `libmp3lame`, which are required for the application's MP4 and MP3 output modes.
 
-FFmpeg is also used for AAC audio in MP4 files and PCM WAV output.
+FFmpeg is also used for AAC audio in MP4 files, PCM WAV output, and authorised unencrypted Minno HLS transfer/muxing.
+
+## websocket-client
+
+Project: https://github.com/websocket-client/websocket-client
+
+The desktop Minno integration uses the Python `websocket-client` package only to communicate with the local Chrome DevTools Protocol endpoint of the downloader-managed Chromium browser session.
+
+`websocket-client` is distributed under the Apache License 2.0.
 
 ## Redistribution status
 
 This repository is currently intended for private development and testing. Before wider public redistribution of compiled installers/DMGs, the exact third-party license texts, GPL source-availability obligations, and Apple signing/notarization process should be packaged and reviewed.
-
 
 ## Android
 
