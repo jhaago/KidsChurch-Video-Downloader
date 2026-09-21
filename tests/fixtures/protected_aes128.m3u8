@@ -1,0 +1,4 @@
+#EXTM3U
+#EXT-X-KEY:METHOD=AES-128,URI="https://keys.example.invalid/key"
+#EXTINF:2,
+seg.m4s
