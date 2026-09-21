@@ -33,7 +33,15 @@ b.m4s
 #EXTINF:2,
 c.m4s
 """
-AUDIO_MEDIA = VIDEO_MEDIA
+AUDIO_MEDIA = """#EXTM3U
+#EXT-X-PLAYLIST-TYPE:VOD
+#EXTINF:2,
+a.m4s
+#EXTINF:2,
+b.m4s
+#EXTINF:2,
+c.m4s
+"""
 
 
 class FakeBrowserSession:
@@ -117,10 +125,11 @@ class MinnoTests(unittest.TestCase):
         self.assertEqual(AUDIO, prepared.audio_url)
 
     def test_protection_is_rejected_before_process(self):
-        protected = '#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI="key"\n#EXTINF:2,\nseg.m4s\n'
+        protected = "#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI=\"key\"\n#EXTINF:2,\nseg.m4s\n"
         for target in (MASTER_URL, VIDEO_1080, AUDIO):
             with self.subTest(target=target):
-                client = MinnoClient(FakeBrowserSession(), fetch_text=make_fetch({target: protected}))
+                mapping = {target: protected}
+                client = MinnoClient(FakeBrowserSession(), fetch_text=make_fetch(mapping))
                 with self.assertRaises(ProtectedStreamError):
                     client.prepare("https://kids.gominno.com/watch/test", 1080)
 
@@ -134,43 +143,69 @@ video_1080.m3u8
             client.prepare("https://kids.gominno.com/watch/test", 1080)
 
     def test_compatible_ffmpeg_command_maps_two_inputs_and_never_logs_url(self):
-        factory = ProcessFactory([FakeProcess([
-            "out_time_us=2000000\n", "total_size=1000000\n", "progress=continue\n",
-            "out_time_us=6000000\n", "total_size=3000000\n", "progress=end\n",
-        ])])
+        process_factory = ProcessFactory([
+            FakeProcess([
+                "out_time_us=2000000\n",
+                "total_size=1000000\n",
+                "progress=continue\n",
+                "out_time_us=6000000\n",
+                "total_size=3000000\n",
+                "progress=end\n",
+            ])
+        ])
         logs = []
         progress = []
         with tempfile.TemporaryDirectory() as td:
-            client = MinnoClient(FakeBrowserSession(), fetch_text=make_fetch(), process_factory=factory, status_callback=logs.append)
-            result = client.download(
-                "https://kids.gominno.com/watch/test", 1080, "ffmpeg", Path(td) / "episode.mp4",
-                cancel_requested=lambda: False, progress_callback=progress.append, process_started_callback=lambda p: None,
+            out = Path(td) / "episode.mp4"
+            client = MinnoClient(
+                FakeBrowserSession(),
+                fetch_text=make_fetch(),
+                process_factory=process_factory,
+                status_callback=logs.append,
             )
-        cmd = factory.commands[0]
+            result = client.download(
+                "https://kids.gominno.com/watch/test",
+                1080,
+                "ffmpeg",
+                out,
+                cancel_requested=lambda: False,
+                progress_callback=progress.append,
+                process_started_callback=lambda p: None,
+            )
+        cmd = process_factory.commands[0]
         self.assertIn("-progress", cmd)
         self.assertIn("pipe:1", cmd)
         self.assertIn("-nostats", cmd)
         self.assertEqual(2, cmd.count("-i"))
         self.assertIn("0:v:0", cmd)
         self.assertIn("1:a:0", cmd)
+        self.assertIn("-c", cmd)
         self.assertIn("copy", cmd)
         self.assertIn("+faststart", cmd)
         self.assertFalse(result.needs_conversion)
+        self.assertEqual("Episode Title", result.title)
+        self.assertEqual(6.0, result.duration)
         self.assertTrue(progress)
         self.assertFalse(any("sessionId=secret" in line or ".m3u8?" in line for line in logs))
 
     def test_incompatible_codecs_use_mkv_and_require_conversion(self):
         incompatible_master = MASTER.replace("avc1.640028,mp4a.40.2", "vp09.00.10.08,opus")
-        factory = ProcessFactory([FakeProcess(["progress=end\n"])])
+        process_factory = ProcessFactory([FakeProcess(["progress=end\n"])])
         with tempfile.TemporaryDirectory() as td:
-            client = MinnoClient(FakeBrowserSession(), fetch_text=make_fetch({MASTER_URL: incompatible_master}), process_factory=factory)
+            client = MinnoClient(
+                FakeBrowserSession(),
+                fetch_text=make_fetch({MASTER_URL: incompatible_master}),
+                process_factory=process_factory,
+            )
             result = client.download(
                 "https://kids.gominno.com/watch/test", 1080, "ffmpeg", Path(td) / "episode.mp4",
-                cancel_requested=lambda: False, progress_callback=lambda s: None, process_started_callback=lambda p: None,
+                cancel_requested=lambda: False,
+                progress_callback=lambda s: None,
+                process_started_callback=lambda p: None,
             )
         self.assertTrue(result.needs_conversion)
         self.assertEqual(".mkv", result.path.suffix)
-        self.assertNotIn("+faststart", factory.commands[0])
+        self.assertNotIn("+faststart", process_factory.commands[0])
 
     def test_403_retries_discovery_once_then_fails(self):
         session = FakeBrowserSession()
@@ -183,7 +218,9 @@ video_1080.m3u8
             with self.assertRaises(MinnoTransferError):
                 client.download(
                     "https://kids.gominno.com/watch/test", 1080, "ffmpeg", Path(td) / "episode.mp4",
-                    cancel_requested=lambda: False, progress_callback=lambda s: None, process_started_callback=lambda p: None,
+                    cancel_requested=lambda: False,
+                    progress_callback=lambda s: None,
+                    process_started_callback=lambda p: None,
                 )
         self.assertEqual(2, session.discover_count)
         self.assertEqual(2, len(factory.commands))
@@ -202,7 +239,9 @@ video_1080.m3u8
             with self.assertRaises(MinnoDownloadCancelled):
                 client.download(
                     "https://kids.gominno.com/watch/test", 1080, "ffmpeg", Path(td) / "episode.mp4",
-                    cancel_requested=cancelled, progress_callback=lambda s: None, process_started_callback=lambda p: None,
+                    cancel_requested=cancelled,
+                    progress_callback=lambda s: None,
+                    process_started_callback=lambda p: None,
                 )
         self.assertTrue(process.terminated)
 
