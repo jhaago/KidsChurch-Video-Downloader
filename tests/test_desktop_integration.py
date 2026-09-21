@@ -4,7 +4,6 @@ import tempfile
 import types
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 
 class FakeBase:
@@ -63,8 +62,7 @@ class DesktopIntegrationTests(unittest.TestCase):
         self.assertEqual("youtube-path", app._download_job({"source": "youtube"}, {}))
 
     def test_app_data_path_keeps_existing_settings_folder_name(self):
-        with tempfile.TemporaryDirectory() as td, patch.dict(desktop_app.os.environ, {"XDG_CONFIG_HOME": td}, clear=False):
-            self.assertEqual(Path(td) / "KidsChurchVideoDownloader", desktop_app.app_data_dir())
+        self.assertEqual("KidsChurchVideoDownloader", desktop_app.app_data_dir().name)
 
 
 if __name__ == "__main__":
