@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
 
-APP_NAME="YouTube Downloader"
+APP_NAME="KidsChurch Video Downloader"
 BUNDLE_ID="com.jordanhaagensen.youtubedownloader"
 ARCH="$(uname -m)"
 
@@ -17,14 +17,15 @@ else
   exit 1
 fi
 
-echo "=========================================="
-echo "YouTube Downloader V0.6.5 - macOS $ARCH_LABEL"
-echo "=========================================="
+echo "=================================================="
+echo "KidsChurch Video Downloader V0.7.0 - macOS $ARCH_LABEL"
+echo "=================================================="
 echo ""
 
 python3 -c "import tkinter; print('Tkinter OK')"
 python3 -m pip install -r requirements.txt
-python3 -m py_compile main.py
+python3 -m py_compile main.py desktop_app.py
+python3 -m compileall -q sources
 python3 assets/generate_icons.py --platform macos
 
 chmod +x prepare_tools_macos.sh
@@ -32,7 +33,7 @@ chmod +x prepare_tools_macos.sh
 
 rm -rf build dist macos_output macos_package
 
-python3 -m PyInstaller   --noconfirm   --clean   --windowed   --onedir   --name "$APP_NAME"   --icon assets/generated/youtube_downloader.icns   --osx-bundle-identifier "$BUNDLE_ID"   main.py
+python3 -m PyInstaller   --noconfirm   --clean   --windowed   --onedir   --name "$APP_NAME"   --icon assets/generated/youtube_downloader.icns   --osx-bundle-identifier "$BUNDLE_ID"   desktop_app.py
 
 APP="dist/$APP_NAME.app"
 MACOS_DIR="$APP/Contents/MacOS"
@@ -66,8 +67,8 @@ echo "Verifying bundled tools..."
 mkdir -p macos_output macos_package
 cp -R "$APP" "macos_package/$APP_NAME.app"
 
-ZIP_PATH="macos_output/YouTubeDownloader-macOS-$ARCH_LABEL-v0.6.5.zip"
-DMG_PATH="macos_output/YouTubeDownloader-macOS-$ARCH_LABEL-v0.6.5.dmg"
+ZIP_PATH="macos_output/KidsChurchVideoDownloader-macOS-$ARCH_LABEL-v0.7.0.zip"
+DMG_PATH="macos_output/KidsChurchVideoDownloader-macOS-$ARCH_LABEL-v0.7.0.dmg"
 
 echo "Creating app ZIP..."
 ditto -c -k --sequesterRsrc --keepParent "$APP" "$ZIP_PATH"
