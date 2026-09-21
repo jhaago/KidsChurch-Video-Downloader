@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - feature/minno-desktop-download
     paths-ignore:
       - "android/**"
       - ".github/workflows/android-build.yml"
@@ -54,6 +55,13 @@ jobs:
         run: |
           echo "Runner architecture: $(uname -m)"
           test "$(uname -m)" = "${{ matrix.expected_arch }}"
+
+      - name: Syntax check desktop modules
+        shell: bash
+        run: |
+          python3 -m py_compile main.py desktop_app.py
+          python3 -m compileall -q sources
+          python3 -c "import desktop_app; print('desktop import OK')"
 
       - name: Build macOS application
         shell: bash
