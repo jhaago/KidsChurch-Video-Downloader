@@ -38,7 +38,9 @@ jobs:
 
       - name: Syntax check
         shell: pwsh
-        run: python -m py_compile main.py
+        run: |
+          python -m py_compile main.py desktop_app.py
+          python -m compileall -q sources
 
       - name: Generate application icon
         shell: pwsh
@@ -53,18 +55,18 @@ jobs:
       - name: Build Windows application
         shell: pwsh
         run: |
-          python -m PyInstaller --noconfirm --clean --windowed --onedir --name YouTubeDownloader --icon assets\generated\youtube_downloader.ico main.py
-          Copy-Item tools\yt-dlp.exe dist\YouTubeDownloader\yt-dlp.exe
-          Copy-Item tools\deno.exe dist\YouTubeDownloader\deno.exe
-          Copy-Item tools\ffmpeg.exe dist\YouTubeDownloader\ffmpeg.exe
-          Copy-Item tools\ffprobe.exe dist\YouTubeDownloader\ffprobe.exe
-          Copy-Item THIRD_PARTY_NOTICES.md dist\YouTubeDownloader\THIRD_PARTY_NOTICES.md
+          python -m PyInstaller --noconfirm --clean --windowed --onedir --name KidsChurchVideoDownloader --icon assets\generated\youtube_downloader.ico desktop_app.py
+          Copy-Item tools\yt-dlp.exe dist\KidsChurchVideoDownloader\yt-dlp.exe
+          Copy-Item tools\deno.exe dist\KidsChurchVideoDownloader\deno.exe
+          Copy-Item tools\ffmpeg.exe dist\KidsChurchVideoDownloader\ffmpeg.exe
+          Copy-Item tools\ffprobe.exe dist\KidsChurchVideoDownloader\ffprobe.exe
+          Copy-Item THIRD_PARTY_NOTICES.md dist\KidsChurchVideoDownloader\THIRD_PARTY_NOTICES.md
 
       - name: Verify portable build contents
         shell: pwsh
         run: |
           $required = @(
-            "YouTubeDownloader.exe",
+            "KidsChurchVideoDownloader.exe",
             "yt-dlp.exe",
             "deno.exe",
             "ffmpeg.exe",
@@ -72,7 +74,7 @@ jobs:
             "THIRD_PARTY_NOTICES.md"
           )
           foreach ($file in $required) {
-            $path = Join-Path "dist\YouTubeDownloader" $file
+            $path = Join-Path "dist\KidsChurchVideoDownloader" $file
             if (-not (Test-Path $path)) {
               throw "Missing packaged file: $path"
             }
@@ -98,15 +100,15 @@ jobs:
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
-          name: YouTubeDownloader-Windows-Installer
-          path: installer_output\YouTubeDownloader_Setup_v0.6.5.exe
+          name: KidsChurchVideoDownloader-Windows-Installer
+          path: installer_output\KidsChurchVideoDownloader_Setup_v0.7.0.exe
           if-no-files-found: error
           compression-level: 0
 
       - name: Upload portable build
         uses: actions/upload-artifact@v4
         with:
-          name: YouTubeDownloader-Windows-Portable
-          path: dist\YouTubeDownloader\
+          name: KidsChurchVideoDownloader-Windows-Portable
+          path: dist\KidsChurchVideoDownloader\
           if-no-files-found: error
           compression-level: 0
