@@ -39,6 +39,20 @@ def resolution_height(value: str) -> int:
     return height if height in {480, 720, 1080} else 1080
 
 
+def output_extension(output_format: str) -> str:
+    if output_format == "MP3 Audio":
+        return ".mp3"
+    if output_format == "WAV Audio":
+        return ".wav"
+    return ".mp4"
+
+
+def resolve_save_name(custom_name: str, fallback: str) -> str:
+    requested = str(custom_name or "").strip()
+    base = requested or str(fallback or "media").strip() or "media"
+    return legacy.safe_filename(base)
+
+
 def unique_output_path(folder: Path, title: str, extension: str = ".mp4") -> Path:
     folder = Path(folder)
     title = legacy.safe_filename(title)
@@ -50,10 +64,13 @@ def unique_output_path(folder: Path, title: str, extension: str = ".mp4") -> Pat
     return candidate
 
 
-def format_minno_progress(snapshot: TransferSnapshot) -> tuple[float, str]:
+def format_minno_progress(
+    snapshot: TransferSnapshot,
+    media_label: str = "video",
+) -> tuple[float, str]:
     transfer_pct = max(0.0, min(100.0, float(snapshot.percent)))
-    overall_pct = transfer_pct * 0.75
-    text = f"Downloading Minno video… {transfer_pct:.1f}%"
+    overall_pct = transfer_pct if media_label == "audio" else transfer_pct * 0.75
+    text = f"Downloading Minno {media_label}… {transfer_pct:.1f}%"
     speed = format_bytes_per_second(snapshot.speed_bps)
     eta = format_eta(snapshot.eta_seconds)
     if speed != "—":
@@ -68,6 +85,7 @@ class MultiSourceDownloaderApp(legacy.DownloaderApp):
         legacy.APP_NAME = APP_NAME
         legacy.APP_VERSION = APP_VERSION
         self.minno_session_var = tk.StringVar(master=root, value="Minno: not signed in")
+        self.save_as_var = tk.StringVar(master=root, value="")
         self.minno_browser_session: MinnoBrowserSession | None = None
         self.minno_client: MinnoClient | None = None
         super().__init__(root)
@@ -82,6 +100,16 @@ class MultiSourceDownloaderApp(legacy.DownloaderApp):
     def _build_ui(self):
         super()._build_ui()
         self._replace_static_label("Paste a YouTube link below", "Paste a YouTube or Minno link below")
+
+        preview_card = self._find_label_parent("PREVIEW")
+        if preview_card is not None:
+            save_row = ttk.Frame(preview_card, style="Card.TFrame")
+            save_row.pack(fill="x", pady=(10, 0))
+            ttk.Label(save_row, text="SAVE AS", style="MutedCard.TLabel").pack(side="left")
+            ttk.Entry(save_row, textvariable=self.save_as_var).pack(
+                side="left", fill="x", expand=True, padx=(12, 0)
+            )
+
         footer = self._find_label_parent("Only download media you own or are authorised to use.")
         if footer is not None:
             ttk.Button(
@@ -214,35 +242,37 @@ class MultiSourceDownloaderApp(legacy.DownloaderApp):
 
     def _display_preview(self, url, info):
         if info.get("source") != "Minno":
-            return super()._display_preview(url, info)
+            super()._display_preview(url, info)
+            self.save_as_var.set(info.get("title") or "")
+            return
         self.preview_info = info
         self.preview_url = url
-        self.preview_title_var.set(info.get("title") or "Minno episode")
+        title = info.get("title") or "Minno episode"
+        self.preview_title_var.set(title)
         self.preview_detail_var.set(
             f"Minno  •  {legacy.duration_text(info.get('duration'))}  •  up to {info.get('max_height') or 1080}p"
         )
+        self.save_as_var.set(title)
         self.minno_session_var.set("Minno: saved session")
 
     def _queue_current_url(self):
-        url = self.url_var.get().strip()
-        source = classify_source(url)
-        if source == SourceType.YOUTUBE:
-            return super()._queue_current_url()
         if self._preview_busy():
             return
+
+        url = self.url_var.get().strip()
         if not url:
             messagebox.showwarning("Video URL", "Paste a YouTube or Minno URL first.")
             return
+
+        source = classify_source(url)
         if source == SourceType.UNKNOWN:
             messagebox.showerror("Unsupported URL", "Paste a YouTube or Minno link.")
-            return
-        if self.output_format_var.get() != "MP4 Video":
-            messagebox.showinfo("Minno output", "Minno downloads currently support MP4 Video only.")
             return
 
         tools = self._required_tools()
         if not tools:
             return
+
         output_dir = Path(self.folder_var.get()).expanduser()
         try:
             output_dir.mkdir(parents=True, exist_ok=True)
@@ -252,32 +282,59 @@ class MultiSourceDownloaderApp(legacy.DownloaderApp):
 
         self._save_settings()
         cached_info = self.preview_info if self.preview_url == url else None
-        display_title = cached_info.get("title") if cached_info and cached_info.get("title") else "Minno episode"
-        quality = self.res_var.get()
+        if cached_info and cached_info.get("title"):
+            display_title = cached_info["title"]
+        elif source == SourceType.MINNO:
+            display_title = "Minno episode"
+        else:
+            display_title = getattr(legacy, "short_url", lambda value: value)(url)
+
+        output_format = self.output_format_var.get()
+        if output_format == "MP4 Video":
+            quality = self.res_var.get()
+        elif output_format == "MP3 Audio":
+            quality = "320 kbps"
+        else:
+            quality = "PCM"
+
+        requested_name = self.save_as_var.get().strip()
         self.job_counter += 1
         job = {
             "id": self.job_counter,
-            "source": SourceType.MINNO.value,
+            "source": source.value,
             "url": url,
             "resolution": self.res_var.get(),
-            "output_format": "MP4 Video",
+            "output_format": output_format,
             "output_dir": output_dir,
             "title": display_title,
+            "save_name": requested_name,
             "status": "Queued",
             "info": cached_info,
         }
         with self.jobs_lock:
             self.jobs.append(job)
+
         self.queue_tree.insert(
             "",
             "end",
             iid=str(job["id"]),
-            values=(display_title, "MP4", quality, "Queued", ""),
+            values=(
+                display_title,
+                output_format.replace(" Video", "").replace(" Audio", ""),
+                quality,
+                "Queued",
+                "",
+            ),
             tags=("Queued",),
         )
         self._refresh_queue_count()
-        self._append_log(f"Queued MP4 Video: {display_title}")
+        if source == SourceType.MINNO:
+            self._append_log(f"Queued {output_format}: Minno episode")
+        else:
+            self._append_log(f"Queued {output_format}: {display_title}")
+
         self.url_var.set("")
+        self.save_as_var.set("")
         self.preview_info = None
         self.preview_url = None
         self.preview_title_var.set("No video preview loaded.")
@@ -295,7 +352,7 @@ class MultiSourceDownloaderApp(legacy.DownloaderApp):
             self.operation_cancel_requested = False
             self.events.put(("job_status", job["id"], "Running"))
             if job.get("source") == SourceType.MINNO.value:
-                self.events.put(("log", "Starting MP4 Video: Minno episode"))
+                self.events.put(("log", f"Starting {job['output_format']}: Minno episode"))
             else:
                 self.events.put(("log", f"Starting {job['output_format']}: {job['url']}"))
             try:
@@ -317,17 +374,33 @@ class MultiSourceDownloaderApp(legacy.DownloaderApp):
     def _download_job(self, job, tools):
         if job.get("source") == SourceType.MINNO.value:
             return self._download_minno_job(job, tools)
-        return super()._download_job(job, tools)
+
+        output = Path(super()._download_job(job, tools))
+        custom_name = str(job.get("save_name") or "").strip()
+        if not custom_name:
+            return str(output)
+
+        desired_title = resolve_save_name(custom_name, output.stem)
+        if desired_title == output.stem:
+            return str(output)
+        renamed = unique_output_path(output.parent, desired_title, output.suffix)
+        shutil.move(str(output), str(renamed))
+        return str(renamed)
 
     def _download_minno_job(self, job, tools):
         if self.minno_client is None:
             raise RuntimeError("Minno support is not ready.")
         temp_dir = Path(tempfile.mkdtemp(prefix="minno_downloader_"))
         try:
+            output_format = job["output_format"]
+            is_audio = output_format in {"MP3 Audio", "WAV Audio"}
             temporary_output = temp_dir / "minno-transfer.mp4"
 
             def on_progress(snapshot: TransferSnapshot):
-                pct, text = format_minno_progress(snapshot)
+                pct, text = format_minno_progress(
+                    snapshot,
+                    media_label="audio" if is_audio else "video",
+                )
                 self.events.put(("job_progress", job["id"], pct, text))
 
             def on_process_started(process):
@@ -338,14 +411,22 @@ class MultiSourceDownloaderApp(legacy.DownloaderApp):
                 resolution_height(job["resolution"]),
                 tools["ffmpeg"],
                 temporary_output,
+                output_format=output_format,
                 cancel_requested=lambda: self.operation_cancel_requested,
                 progress_callback=on_progress,
                 process_started_callback=on_process_started,
             )
             self.active_process = None
-            clean_title = legacy.safe_filename(result.title or "Minno episode")
-            self.events.put(("job_title", job["id"], result.title or clean_title))
-            output = unique_output_path(job["output_dir"], clean_title, ".mp4")
+
+            display_title = result.title or "Minno episode"
+            self.events.put(("job_title", job["id"], display_title))
+            clean_title = resolve_save_name(job.get("save_name", ""), display_title)
+            output = unique_output_path(
+                job["output_dir"],
+                clean_title,
+                output_extension(output_format),
+            )
+
             if result.needs_conversion:
                 self.events.put(
                     (
