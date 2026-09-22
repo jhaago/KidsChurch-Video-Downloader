@@ -72,9 +72,14 @@ class MinnoDownloadResult:
     duration: float
 
 
+MINNO_OUTPUT_FORMATS = {"MP4 Video", "MP3 Audio", "WAV Audio"}
+
+
 def validate_output_format(output_format: str) -> None:
-    if output_format != "MP4 Video":
-        raise MinnoUnsupportedFormatError("Minno downloads currently support MP4 Video only.")
+    if output_format not in MINNO_OUTPUT_FORMATS:
+        raise MinnoUnsupportedFormatError(
+            "Minno downloads support MP4 Video, MP3 Audio, or WAV Audio."
+        )
 
 
 def _codec_pair(codecs: tuple[str, ...]) -> tuple[str | None, str | None]:
@@ -187,23 +192,44 @@ class MinnoClient:
         prepared: PreparedMinnoStream,
         ffmpeg: str,
         target: Path,
+        output_format: str,
         needs_conversion: bool,
     ) -> list[str]:
         command = [str(ffmpeg), "-y", "-hide_banner", "-loglevel", "warning"]
         header_block = self._header_block(prepared.headers)
-        if header_block:
-            command += ["-headers", header_block]
-        command += ["-i", prepared.video_url]
-        if header_block:
-            command += ["-headers", header_block]
-        command += ["-i", prepared.audio_url]
-        command += [
-            "-map", "0:v:0",
-            "-map", "1:a:0",
-            "-c", "copy",
-        ]
-        if not needs_conversion:
-            command += ["-movflags", "+faststart"]
+
+        if output_format == "MP4 Video":
+            if header_block:
+                command += ["-headers", header_block]
+            command += ["-i", prepared.video_url]
+            if header_block:
+                command += ["-headers", header_block]
+            command += ["-i", prepared.audio_url]
+            command += [
+                "-map", "0:v:0",
+                "-map", "1:a:0",
+                "-c", "copy",
+            ]
+            if not needs_conversion:
+                command += ["-movflags", "+faststart"]
+        else:
+            if header_block:
+                command += ["-headers", header_block]
+            command += ["-i", prepared.audio_url, "-vn"]
+            if output_format == "MP3 Audio":
+                command += [
+                    "-c:a", "libmp3lame",
+                    "-b:a", "320k",
+                    "-ar", "48000",
+                    "-ac", "2",
+                ]
+            elif output_format == "WAV Audio":
+                command += [
+                    "-c:a", "pcm_s16le",
+                    "-ar", "48000",
+                    "-ac", "2",
+                ]
+
         command += ["-progress", "pipe:1", "-nostats", str(target)]
         return command
 
@@ -225,13 +251,16 @@ class MinnoClient:
         prepared: PreparedMinnoStream,
         ffmpeg: str,
         target: Path,
+        output_format: str,
         needs_conversion: bool,
         cancel_requested: Callable[[], bool],
         progress_callback: Callable[[TransferSnapshot], None],
         process_started_callback: Callable[[object], None],
     ) -> None:
         target.parent.mkdir(parents=True, exist_ok=True)
-        command = self._build_ffmpeg_command(prepared, ffmpeg, target, needs_conversion)
+        command = self._build_ffmpeg_command(
+            prepared, ffmpeg, target, output_format, needs_conversion
+        )
         process = self._process_factory(
             command,
             stdout=subprocess.PIPE,
@@ -295,7 +324,9 @@ class MinnoClient:
         cancel_requested: Callable[[], bool],
         progress_callback: Callable[[TransferSnapshot], None],
         process_started_callback: Callable[[object], None],
+        output_format: str = "MP4 Video",
     ) -> MinnoDownloadResult:
+        validate_output_format(output_format)
         output_path = Path(output_path)
         for attempt in range(2):
             if cancel_requested():
@@ -306,14 +337,24 @@ class MinnoClient:
                 cancel_requested=cancel_requested,
                 status_callback=self._status_callback,
             )
-            needs_conversion = not prepared.is_powerpoint_compatible
-            target = output_path.with_suffix(".mkv") if needs_conversion else output_path.with_suffix(".mp4")
+
+            if output_format == "MP4 Video":
+                needs_conversion = not prepared.is_powerpoint_compatible
+                target = output_path.with_suffix(".mkv") if needs_conversion else output_path.with_suffix(".mp4")
+            elif output_format == "MP3 Audio":
+                needs_conversion = False
+                target = output_path.with_suffix(".mp3")
+            else:
+                needs_conversion = False
+                target = output_path.with_suffix(".wav")
+
             self._status_callback("Starting Minno download.")
             try:
                 self._run_transfer(
                     prepared,
                     ffmpeg,
                     target,
+                    output_format,
                     needs_conversion,
                     cancel_requested,
                     progress_callback,
