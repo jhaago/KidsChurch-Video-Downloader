@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - feature/minno-desktop-download
     paths-ignore:
       - "android/**"
       - ".github/workflows/android-build.yml"
