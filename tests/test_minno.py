@@ -108,10 +108,11 @@ def make_fetch(mapping=None):
 
 class MinnoTests(unittest.TestCase):
     def test_output_format_validation(self):
-        validate_output_format("MP4 Video")
-        for value in ("MP3 Audio", "WAV Audio"):
-            with self.subTest(value=value), self.assertRaises(MinnoUnsupportedFormatError):
+        for value in ("MP4 Video", "MP3 Audio", "WAV Audio"):
+            with self.subTest(value=value):
                 validate_output_format(value)
+        with self.assertRaises(MinnoUnsupportedFormatError):
+            validate_output_format("FLAC Audio")
 
     def test_preview_and_prepare_quality(self):
         client = MinnoClient(FakeBrowserSession(), fetch_text=make_fetch())
@@ -187,6 +188,55 @@ video_1080.m3u8
         self.assertEqual(6.0, result.duration)
         self.assertTrue(progress)
         self.assertFalse(any("sessionId=secret" in line or ".m3u8?" in line for line in logs))
+
+    def test_mp3_download_uses_audio_playlist_only(self):
+        factory = ProcessFactory([FakeProcess(["progress=end\n"])])
+        with tempfile.TemporaryDirectory() as td:
+            client = MinnoClient(FakeBrowserSession(), fetch_text=make_fetch(), process_factory=factory)
+            result = client.download(
+                "https://kids.gominno.com/watch/test",
+                1080,
+                "ffmpeg",
+                Path(td) / "episode.mp4",
+                output_format="MP3 Audio",
+                cancel_requested=lambda: False,
+                progress_callback=lambda s: None,
+                process_started_callback=lambda p: None,
+            )
+        cmd = factory.commands[0]
+        self.assertEqual(1, cmd.count("-i"))
+        self.assertIn(AUDIO, cmd)
+        self.assertNotIn(VIDEO_1080, cmd)
+        self.assertIn("-vn", cmd)
+        self.assertIn("libmp3lame", cmd)
+        self.assertIn("320k", cmd)
+        self.assertIn("48000", cmd)
+        self.assertEqual(".mp3", result.path.suffix)
+        self.assertFalse(result.needs_conversion)
+
+    def test_wav_download_uses_audio_playlist_only(self):
+        factory = ProcessFactory([FakeProcess(["progress=end\n"])])
+        with tempfile.TemporaryDirectory() as td:
+            client = MinnoClient(FakeBrowserSession(), fetch_text=make_fetch(), process_factory=factory)
+            result = client.download(
+                "https://kids.gominno.com/watch/test",
+                1080,
+                "ffmpeg",
+                Path(td) / "episode.mp4",
+                output_format="WAV Audio",
+                cancel_requested=lambda: False,
+                progress_callback=lambda s: None,
+                process_started_callback=lambda p: None,
+            )
+        cmd = factory.commands[0]
+        self.assertEqual(1, cmd.count("-i"))
+        self.assertIn(AUDIO, cmd)
+        self.assertNotIn(VIDEO_1080, cmd)
+        self.assertIn("-vn", cmd)
+        self.assertIn("pcm_s16le", cmd)
+        self.assertIn("48000", cmd)
+        self.assertEqual(".wav", result.path.suffix)
+        self.assertFalse(result.needs_conversion)
 
     def test_incompatible_codecs_use_mkv_and_require_conversion(self):
         incompatible_master = MASTER.replace("avc1.640028,mp4a.40.2", "vp09.00.10.08,opus")
