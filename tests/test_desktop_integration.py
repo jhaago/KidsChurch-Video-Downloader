@@ -48,12 +48,30 @@ class DesktopIntegrationTests(unittest.TestCase):
         self.assertIn("2.9 MB/s", text)
         self.assertIn("ETA 11:42", text)
 
+    def test_format_minno_progress_can_label_audio(self):
+        from sources.progress import TransferSnapshot
+
+        _, text = desktop_app.format_minno_progress(
+            TransferSnapshot(percent=25.0, speed_bps=1_500_000, eta_seconds=30),
+            media_label="audio",
+        )
+        self.assertIn("Downloading Minno audio", text)
+
     def test_unique_output_path_avoids_overwrite(self):
         with tempfile.TemporaryDirectory() as td:
             folder = Path(td)
             first = folder / "Episode.mp4"
             first.write_text("existing")
             self.assertEqual(folder / "Episode (2).mp4", desktop_app.unique_output_path(folder, "Episode", ".mp4"))
+
+    def test_resolve_save_name_prefers_custom_name_and_sanitises_it(self):
+        self.assertEqual("Lesson_ 4", desktop_app.resolve_save_name("  Lesson/ 4  ", "Episode Title"))
+        self.assertEqual("Episode Title", desktop_app.resolve_save_name("   ", "Episode Title"))
+
+    def test_output_extension_matches_selected_format(self):
+        self.assertEqual(".mp4", desktop_app.output_extension("MP4 Video"))
+        self.assertEqual(".mp3", desktop_app.output_extension("MP3 Audio"))
+        self.assertEqual(".wav", desktop_app.output_extension("WAV Audio"))
 
     def test_download_job_routes_minno_without_touching_youtube_base_path(self):
         app = desktop_app.MultiSourceDownloaderApp.__new__(desktop_app.MultiSourceDownloaderApp)
